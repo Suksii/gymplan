@@ -7,7 +7,9 @@
   --bg:#F5F4F8; --surface:#FFFFFF; --ink:#1C1929; --muted:#676279; --line:#DFDCE8;
   --accent:#A81E5B; --accent-ink:#FFFFFF; --accent-soft:#F8E4EC;
   --ok:#0B7A66; --ok-ink:#FFFFFF; --ok-soft:#DDF2EC;
-  --fig:#3B3550; --fig-far:#9A94AE; --fig-joint:#F5F4F8; --fig-gear:#C9C5D6;
+  --fg-bg:#ECEAF2; --fg-floor:#E1DEEA; --fg-shadow:rgba(28,25,41,.14); --fg-line:rgba(28,25,41,.6);
+  --fg-skin:#E9BC9C; --fg-skin2:#CF9A78; --fg-top:#2A9D8A; --fg-top2:#1E7C6C; --fg-leg:#34304D; --fg-leg2:#262338; --fg-shoe:#FBFBFD; --fg-hair:#4B2E22;
+  --fg-gear:#B9B4C8; --fg-gear-top:#D3CFDE; --fg-gear-dark:#9A95AC; --fg-metal:#6E6985; --fg-weight:#A81E5B; --fg-weight2:#7D1644;
   --display:"Barlow Condensed","Avenir Next Condensed","Roboto Condensed","Arial Narrow",Arial,sans-serif;
   --body:"Barlow",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
 }
@@ -16,14 +18,14 @@
     --bg:#14121B; --surface:#1E1B28; --ink:#EFEDF6; --muted:#A6A1B8; --line:#343043;
     --accent:#F27AA8; --accent-ink:#2A0A18; --accent-soft:#3A1A29;
     --ok:#4FD1B5; --ok-ink:#06261F; --ok-soft:#143A33;
-    --fig:#DCD7EC; --fig-far:#756F8A; --fig-joint:#14121B; --fig-gear:#474258; color-scheme:dark;
+    --fg-bg:#D6D2E0; --fg-floor:#C8C3D6; color-scheme:dark;
   }
 }
 :root[data-theme="dark"]{
   --bg:#14121B; --surface:#1E1B28; --ink:#EFEDF6; --muted:#A6A1B8; --line:#343043;
   --accent:#F27AA8; --accent-ink:#2A0A18; --accent-soft:#3A1A29;
   --ok:#4FD1B5; --ok-ink:#06261F; --ok-soft:#143A33;
-    --fig:#DCD7EC; --fig-far:#756F8A; --fig-joint:#14121B; --fig-gear:#474258; color-scheme:dark;
+    --fg-bg:#D6D2E0; --fg-floor:#C8C3D6; color-scheme:dark;
 }
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5}
@@ -104,9 +106,9 @@ main{padding-block:20px 120px;display:flex;flex-direction:column;gap:24px}
 .errs dt::before{content:"\2715\00a0";color:var(--accent)}
 .errs dd{margin:2px 0 0;color:var(--muted)}
 .errs dd::before{content:"\2713\00a0";color:var(--ok);font-weight:600}
-.fig{background:var(--bg);border-radius:8px;overflow:hidden}
-.fig svg{display:block;width:100%;height:auto;max-height:260px}
-.figcap{display:flex;justify-content:center;align-items:center;gap:8px;padding:6px 10px 10px;font-family:var(--display);font-weight:600;font-size:1.1rem;letter-spacing:.03em;text-transform:uppercase;color:var(--accent);min-height:2.2em}
+.fig{background:var(--fg-bg);border-radius:8px;overflow:hidden}
+.fig svg{display:block;width:100%;height:auto;max-height:320px}
+.figcap{display:flex;justify-content:center;align-items:center;gap:8px;padding:6px 10px 10px;background:var(--surface);border-top:1px solid var(--line);font-family:var(--display);font-weight:600;font-size:1.1rem;letter-spacing:.03em;text-transform:uppercase;color:var(--accent);min-height:2.2em}
 .vid{display:flex;flex-direction:column;gap:6px}
 .vidbtn{position:relative;display:block;width:100%;aspect-ratio:16/9;padding:0;border:0;border-radius:8px;overflow:hidden;background:var(--ink)}
 .vidbtn img{width:100%;height:100%;object-fit:cover;display:block;opacity:.88}
@@ -576,133 +578,173 @@ function hintFor(ex){
   return txt;
 }
 
-/* ---------- animated mannequin: a jointed side/front-view figure posed with two-bone IK, looping between two poses ---------- */
+/* ---------- animated figure: a 3D jointed body (two-bone IK), drawn from a three-quarter view, looping between two poses ----------
+   Pose numbers are in the side plane: x forward, y down (ground at 151). hz / fz = half-distance between hands / feet (sideways). */
 var FIGS={
- squat:{a:{hip:[96,77],t:4,foot:[100,145],hand:[96,38]},b:{hip:[78,116],t:38,foot:[100,145],hand:[103,86]},
-  props:[["plate","sh",-5,1,12]],tm:[2.4,.3,1.2,.5],cap:["Spuštaj se 2–3 s","Ustani snažno"]},
- rdl:{a:{hip:[96,77],t:3,foot:[98,145],hand:[102,80]},b:{hip:[78,84],t:66,foot:[98,145],hand:[106,112]},
-  props:[["plate","hand",0,0,12]],tm:[2.8,.4,1.2,.5],cap:["Kukovi unazad, 3 s","Kukovi naprijed"]},
- legpress:{a:{hip:[76,124],t:-40,foot:[126,82],toe:[-7,-9],hand:[84,130]},b:{hip:[76,124],t:-40,foot:[104,99],toe:[-7,-9],hand:[84,130]},
-  props:[["seg",38,92,72,134,7],["seg",72,134,94,130,7],["segj","foot",-9,-17,13,10,5],["plate","foot",12,-12,9]],tm:[2.4,.3,1.2,.4],cap:["Spuštaj 2–3 s","Guraj petama"]},
- legcurl:{a:{hip:[76,105],t:-8,foot:[143,110],toe:[10,-6],hand:[88,113]},b:{hip:[76,105],t:-8,foot:[104,138],toe:[11,4],hand:[88,113]},
-  props:[["rect",64,110,50,7],["seg",66,110,59,62,6],["rect",96,91,18,6],["pad","foot",-1,6,6]],tm:[1.1,.6,2.4,.3],cap:["Privuci pete, zadrži","Vraćaj 2–3 s"]},
- calf:{a:{hip:[95,77.5],t:2,foot:[94,146],toe:[13,3],hand:[99,81]},b:{hip:[95,68.5],t:2,foot:[94,137],toe:[13,12],hand:[99,72]},
-  props:[["rect",98,149,28,9],["db","hand"]],tm:[1,.8,2,.8],cap:["Na prste, zadrži","Spuštaj petu polako"]},
- plank:{a:{hip:[95,124],t:86,foot:[27,141],toe:[3,8],hand:[161,146]},b:{hip:[95,122.5],t:86,foot:[27,141],toe:[3,8],hand:[161,146]},eDir:-1,
+ squat:{a:{hip:[96,77],t:4,foot:[100,145],hand:[96,38],hz:19,fz:12},b:{hip:[78,116],t:38,foot:[100,145],hand:[103,86],hz:19,fz:12},kOut:.45,eOut:.6,
+  props:[["bar","sh",-5,1,12]],tm:[2.4,.3,1.2,.5],cap:["Spuštaj se 2–3 s","Ustani snažno"]},
+ rdl:{a:{hip:[96,77],t:3,foot:[98,145],hand:[102,80],hz:13},b:{hip:[78,84],t:66,foot:[98,145],hand:[106,112],hz:13},
+  props:[["bar","hand",0,0,12]],tm:[2.8,.4,1.2,.5],cap:["Kukovi unazad, 3 s","Kukovi naprijed"]},
+ legpress:{a:{hip:[76,124],t:-40,foot:[126,82],toe:[-7,-9],hand:[84,130],hz:15,fz:9},b:{hip:[76,124],t:-40,foot:[104,99],toe:[-7,-9],hand:[84,130],hz:15,fz:9},kOut:.3,
+  props:[["seg",38,92,72,134,7],["seg",72,134,94,130,7],["segj","foot",-9,-17,13,10,5]],tm:[2.4,.3,1.2,.4],cap:["Spuštaj 2–3 s","Guraj petama"]},
+ legcurl:{a:{hip:[76,105],t:-8,foot:[143,110],toe:[10,-6],hand:[88,113],hz:15},b:{hip:[76,105],t:-8,foot:[104,138],toe:[11,4],hand:[88,113],hz:15},
+  props:[["rect",64,110,50,7],["seg",66,110,59,62,6],["pad","foot",-1,6,4]],tm:[1.1,.6,2.4,.3],cap:["Privuci pete, zadrži","Vraćaj 2–3 s"]},
+ calf:{a:{hip:[95,77.5],t:2,foot:[94,146],toe:[13,3],hand:[99,81],hz:14},b:{hip:[95,68.5],t:2,foot:[94,137],toe:[13,12],hand:[99,72],hz:14},
+  props:[["rect",98,149,28,6,0,20],["db","hand","x"]],tm:[1,.8,2,.8],cap:["Na prste, zadrži","Spuštaj petu polako"]},
+ plank:{a:{hip:[95,124],t:86,foot:[27,141],toe:[3,8],hand:[161,146],hz:9},b:{hip:[95,122.5],t:86,foot:[27,141],toe:[3,8],hand:[161,146],hz:9},eDir:-1,
   props:[],tm:[1.6,0,1.6,0],cap:["Drži liniju, diši","Drži liniju, diši"]},
- dbbench:{a:{hip:[122,108],t:-90,foot:[150,145],hand:[78,61]},b:{hip:[122,108],t:-90,foot:[150,145],hand:[80,93]},eDir:-1,
-  props:[["rect",52,113,84,6],["seg",62,119,62,150,4],["seg",126,119,126,150,4],["db","hand"]],tm:[2.4,.3,1.1,.4],cap:["Spuštaj 2–3 s","Potisni gore"]},
- latpd:{a:{hip:[92,112],t:-6,foot:[124,145],hand:[92,21]},b:{hip:[92,112],t:-14,foot:[124,145],hand:[93,70]},
-  props:[["rect",78,117,30,6],["seg",93,123,93,150,4],["rect",104,99,16,6],["cable",92,-24,"hand"],["dot","hand",3.5]],tm:[1.1,.5,2.4,.3],cap:["Povuci do grudi","Vraćaj 2–3 s"]},
- ohp:{a:{hip:[90,112],t:-4,foot:[122,145],hand:[94,54]},b:{hip:[90,112],t:-4,foot:[122,145],hand:[88,21]},
-  props:[["rect",76,117,30,6],["seg",78,117,74,62,6],["seg",91,123,91,150,4],["db","hand"]],tm:[1.1,.3,2.2,.4],cap:["Potisni gore","Spuštaj 2 s"]},
- cablerow:{a:{hip:[80,118],t:10,foot:[142,124],toe:[3,-12],hand:[133,92]},b:{hip:[80,118],t:-6,foot:[142,124],toe:[3,-12],hand:[96,98]},
-  props:[["rect",62,124,40,6],["seg",82,130,82,150,4],["seg",147,106,151,134,5],["cable",178,96,"hand"],["dot","hand",3.5]],tm:[1.1,.6,2.2,.3],cap:["Povuci do stomaka","Vraćaj 2 s"]},
- latraise:{view:"front",arcHand:true,a:{hip:[100,77],hand:[19,80],foot:[9,145]},b:{hip:[100,77],hand:[59,36],foot:[9,145]},
-  props:[["db","hand"]],tm:[1.1,.3,2.4,.3],cap:["Podigni do ramena","Spuštaj 2–3 s"]},
- pushdown:{a:{hip:[90,77],t:10,foot:[92,145],hand:[116,52]},b:{hip:[90,77],t:10,foot:[92,145],hand:[106,80]},
-  props:[["cable",122,-24,"hand"],["dot","hand",3.5]],tm:[1.1,.5,2.2,.3],cap:["Potisni dolje","Vraćaj 2 s"]},
- curl:{a:{hip:[96,77],t:0,foot:[96,145],hand:[99,80]},b:{hip:[96,77],t:0,foot:[96,145],hand:[110,46]},
-  props:[["db","hand"]],tm:[1.1,.5,2.4,.3],cap:["Savij ruke","Spuštaj 2–3 s"]},
- hipthrust:{a:{hip:[97,127],t:-53,foot:[138,145],hand:[99,119]},b:{hip:[104,102],t:-87,foot:[138,145],hand:[106,94]},
-  props:[["rect",30,104,32,46],["plate","hip",1,-9,12]],tm:[1.1,.7,2.2,.3],cap:["Kukovi gore, stisni","Spuštaj 2 s"]},
- bss:{a:{hip:[92,80],t:8,foot:[112,145],foot2:[60,108],toe2:[-11,1],hand:[96,84]},b:{hip:[90,108],t:16,foot:[112,145],foot2:[60,108],toe2:[-11,1],hand:[101,112]},kDir2:1,
-  props:[["rect",30,112,32,38],["db","hand"]],tm:[2.4,.3,1.2,.4],cap:["Spuštaj se 2–3 s","Ustani prednjom nogom"]},
- hyper:{a:{hip:[101,88],t:45,foot:[52,138],toe:[9,8],hand:[127,68]},b:{hip:[101,88],t:118,foot:[52,138],toe:[9,8],hand:[131,104]},
-  props:[["seg",50,148,112,102,5],["seg",100,110,114,96,9],["seg",112,102,112,150,5],["seg",42,148,62,148,5]],tm:[2.2,.3,1.1,.6],cap:["Spuštaj 2 s","Podigni se zadnjicom"]},
- legext:{a:{hip:[76,105],t:-10,foot:[114,138],toe:[11,3],hand:[88,113]},b:{hip:[76,105],t:-10,foot:[145,104],toe:[4,-11],hand:[88,113]},
-  props:[["rect",64,110,50,7],["seg",66,110,58,62,6],["pad","foot",5,-3,6]],tm:[1.1,.6,2.4,.3],cap:["Ispruži, stisni","Spuštaj 2–3 s"]},
- abd:{view:"front",len:{th:15},a:{hip:[100,108],hand:[20,112],foot:[9,148]},b:{hip:[100,108],hand:[20,112],foot:[37,143]},
-  props:[["rect",86,58,28,56],["rect",76,113,48,7],["pad","kn",7,0,5]],tm:[1.1,.6,2.2,.3],cap:["Raširi, zadrži","Vraćaj 2 s"]},
- legraise:{arcFoot:true,a:{hip:[110,140],t:-90,foot:[177,134],toe:[9,-8],hand:[112,144]},b:{hip:[110,140],t:-90,foot:[114,71],toe:[5,-11],hand:[112,144]},
+ dbbench:{a:{hip:[122,108],t:-90,foot:[150,145],hand:[78,61],hz:12,fz:17},b:{hip:[122,108],t:-90,foot:[150,145],hand:[80,97],hz:23,fz:17},eDir:-1,eOut:3,
+  props:[["rect",52,113,84,6,0,11],["seg",62,119,62,150,4],["seg",126,119,126,150,4],["db","hand","z"]],tm:[2.4,.3,1.1,.4],cap:["Spuštaj 2–3 s","Potisni gore"]},
+ latpd:{a:{hip:[92,112],t:-6,foot:[124,145],hand:[92,23],hz:22},b:{hip:[92,112],t:-14,foot:[124,145],hand:[93,68],hz:20},eOut:1.4,
+  props:[["rect",78,117,30,6],["seg",93,123,93,150,4],["cable",92,-34,"hand"],["handle","hand",6]],tm:[1.1,.5,2.4,.3],cap:["Povuci do grudi","Vraćaj 2–3 s"]},
+ ohp:{a:{hip:[90,112],t:-4,foot:[122,145],hand:[92,56],hz:20},b:{hip:[90,112],t:-4,foot:[122,145],hand:[88,22],hz:13},eOut:2.2,
+  props:[["rect",76,117,30,6],["seg",78,117,74,62,6],["seg",91,123,91,150,4],["db","hand","z"]],tm:[1.1,.3,2.2,.4],cap:["Potisni gore","Spuštaj 2 s"]},
+ cablerow:{a:{hip:[80,118],t:10,foot:[142,124],toe:[3,-12],hand:[133,92],hz:4},b:{hip:[80,118],t:-6,foot:[142,124],toe:[3,-12],hand:[96,98],hz:5},
+  props:[["rect",62,124,40,6],["seg",82,130,82,150,4],["seg",147,106,151,134,6],["cable",178,96,"hand"],["handle","hand",1]],tm:[1.1,.6,2.2,.3],cap:["Povuci do stomaka","Vraćaj 2 s"]},
+ latraise:{arcHand:true,a:{hip:[96,77],t:3,foot:[96,145],hand:[100,80],hz:14},b:{hip:[96,77],t:3,foot:[96,145],hand:[103,36],hz:57},eDir:1,
+  props:[["db","hand","x"]],tm:[1.1,.3,2.4,.3],cap:["Podigni do ramena","Spuštaj 2–3 s"]},
+ pushdown:{a:{hip:[90,77],t:10,foot:[92,145],hand:[116,52],hz:5},b:{hip:[90,77],t:10,foot:[92,145],hand:[106,80],hz:6},
+  props:[["cable",122,-34,"hand"],["handle","hand",2]],tm:[1.1,.5,2.2,.3],cap:["Potisni dolje","Vraćaj 2 s"]},
+ curl:{a:{hip:[96,77],t:0,foot:[96,145],hand:[99,80],hz:14},b:{hip:[96,77],t:0,foot:[96,145],hand:[110,46],hz:13},
+  props:[["db","hand","z"]],tm:[1.1,.5,2.4,.3],cap:["Savij ruke","Spuštaj 2–3 s"]},
+ hipthrust:{a:{hip:[97,127],t:-53,foot:[138,145],hand:[99,119],hz:17,fz:10},b:{hip:[104,102],t:-87,foot:[138,145],hand:[106,94],hz:17,fz:10},
+  props:[["rect",30,104,32,46,0,22],["bar","hip",1,-9,12]],tm:[1.1,.7,2.2,.3],cap:["Kukovi gore, stisni","Spuštaj 2 s"]},
+ bss:{a:{hip:[92,80],t:8,foot:[112,145],foot2:[60,108],toe2:[-11,1],hand:[96,84],hz:14},b:{hip:[90,108],t:16,foot:[112,145],foot2:[60,108],toe2:[-11,1],hand:[101,112],hz:14},kDir2:1,
+  props:[["rect",30,112,32,38,-6,16],["db","hand","x"]],tm:[2.4,.3,1.2,.4],cap:["Spuštaj se 2–3 s","Ustani prednjom nogom"]},
+ hyper:{a:{hip:[101,88],t:45,foot:[52,138],toe:[9,8],hand:[127,68],hz:3},b:{hip:[101,88],t:118,foot:[52,138],toe:[9,8],hand:[131,104],hz:3},
+  props:[["seg",50,148,112,102,4],["seg",100,110,114,96,9],["seg",112,102,112,150,4],["seg",42,148,62,148,6]],tm:[2.2,.3,1.1,.6],cap:["Spuštaj 2 s","Podigni se zadnjicom"]},
+ legext:{a:{hip:[76,105],t:-10,foot:[114,138],toe:[11,3],hand:[88,113],hz:15},b:{hip:[76,105],t:-10,foot:[145,104],toe:[4,-11],hand:[88,113],hz:15},
+  props:[["rect",64,110,50,7],["seg",66,110,58,62,6],["pad","foot",5,-3,4]],tm:[1.1,.6,2.4,.3],cap:["Ispruži, stisni","Spuštaj 2–3 s"]},
+ abd:{a:{hip:[76,105],t:-6,foot:[112,141],hand:[86,113],hz:16,fz:8},b:{hip:[76,105],t:-6,foot:[108,141],hand:[86,113],hz:16,fz:34},kOut:.9,
+  props:[["rect",64,110,46,7,0,17],["seg",66,110,60,62,6],["padz","kn",5]],tm:[1.1,.6,2.2,.3],cap:["Raširi, zadrži","Vraćaj 2 s"]},
+ legraise:{arcFoot:true,a:{hip:[110,140],t:-90,foot:[177,134],toe:[9,-8],hand:[112,144],hz:16,fz:5},b:{hip:[110,140],t:-90,foot:[114,71],toe:[5,-11],hand:[112,144],hz:16,fz:5},
   props:[],tm:[1.2,.3,3,.2],cap:["Podigni noge","Spuštaj 3 s"]},
- dbrow:{a:{hip:[72,90],t:88,foot:[50,145],foot2:[40,121],toe2:[-10,2],hand:[116,134],hand2:[120,123]},b:{hip:[72,90],t:88,foot:[50,145],foot2:[40,121],toe2:[-10,2],hand:[108,104],hand2:[120,123]},kDir2:-1,
-  props:[["rect",34,124,100,6],["seg",44,130,44,150,4],["seg",124,130,124,150,4],["db","hand"]],tm:[1.1,.5,2.2,.3],cap:["Povuci ka kuku","Spuštaj 2 s"]},
- incline:{a:{hip:[112,116],t:-60,foot:[144,145],hand:[73,47]},b:{hip:[112,116],t:-60,foot:[144,145],hand:[78,80]},eDir:-1,
-  props:[["seg",116,123,62,92,6],["rect",112,121,26,6],["seg",120,127,120,150,4],["seg",70,100,70,150,4],["db","hand"]],tm:[2.4,.3,1.1,.4],cap:["Spuštaj 2–3 s","Potisni gore"]},
- pullup:{a:{hip:[98,80],t:2,foot:[74,112],toe:[-10,3],hand:[100,-12]},b:{hip:[98,50],t:2,foot:[74,82],toe:[-10,3],hand:[100,-12]},
-  props:[["seg",100,-14,126,-14,4],["seg",126,-14,126,150,4],["dot","hand",3.5],["segj","kn",-9,7,11,7,6]],tm:[1.2,.4,2.4,.4],cap:["Povuci se gore","Spuštaj se 2–3 s"]},
- pushup:{a:{hip:[92,112],t:80,foot:[28,139],toe:[3,9],hand:[138,147]},b:{hip:[92,129],t:88,foot:[28,141],toe:[3,8],hand:[138,147]},
+ dbrow:{a:{hip:[72,90],t:88,foot:[50,145],foot2:[40,121],toe2:[-10,2],hand:[116,134],hand2:[120,123],hz:12,fz:12},b:{hip:[72,90],t:88,foot:[50,145],foot2:[40,121],toe2:[-10,2],hand:[108,104],hand2:[120,123],hz:13,fz:12},kDir2:-1,
+  props:[["rect",34,124,100,6,-9,11],["seg",44,130,44,150,4,-9],["seg",124,130,124,150,4,-9],["db1","hand","x"]],tm:[1.1,.5,2.2,.3],cap:["Povuci ka kuku","Spuštaj 2 s"]},
+ incline:{a:{hip:[112,116],t:-60,foot:[144,145],hand:[73,47],hz:12,fz:17},b:{hip:[112,116],t:-60,foot:[144,145],hand:[78,84],hz:23,fz:17},eDir:-1,eOut:3,
+  props:[["seg",116,123,62,92,6,0,11],["rect",112,121,26,6,0,11],["seg",120,127,120,150,4],["seg",70,100,70,150,4],["db","hand","z"]],tm:[2.4,.3,1.1,.4],cap:["Spuštaj 2–3 s","Potisni gore"]},
+ pullup:{a:{hip:[98,80],t:2,foot:[74,112],toe:[-10,3],hand:[100,-12],hz:17},b:{hip:[98,50],t:2,foot:[74,82],toe:[-10,3],hand:[100,-12],hz:17},eOut:1.6,
+  props:[["handle","hand",8],["segj","kn",-9,7,11,7,6]],tm:[1.2,.4,2.4,.4],cap:["Povuci se gore","Spuštaj se 2–3 s"]},
+ pushup:{a:{hip:[92,112],t:80,foot:[28,139],toe:[3,9],hand:[138,147],hz:15},b:{hip:[92,129],t:88,foot:[28,141],toe:[3,8],hand:[138,147],hz:15},eOut:.5,
   props:[],tm:[2.2,.3,1.1,.4],cap:["Spuštaj se 2 s","Odgurni se"]},
- facepull:{a:{hip:[84,77],t:-4,foot:[86,145],hand:[126,34]},b:{hip:[84,77],t:-4,foot:[86,145],hand:[94,22]},
-  props:[["cable",180,26,"hand"],["dot","hand",3.5]],tm:[1.1,.6,2.2,.3],cap:["Povuci ka čelu","Vraćaj 2 s"]},
- hammer:{a:{hip:[96,77],t:0,foot:[96,145],hand:[99,80]},b:{hip:[96,77],t:0,foot:[96,145],hand:[111,48]},
-  props:[["db","hand"]],tm:[1.1,.4,2.4,.3],cap:["Savij ruke","Spuštaj 2–3 s"]},
- ohtri:{a:{hip:[96,77],t:0,foot:[96,145],hand:[98,-14]},b:{hip:[96,77],t:0,foot:[96,145],hand:[84,24]},eDir:-1,
-  props:[["db","hand"]],tm:[2.2,.3,1.1,.4],cap:["Spuštaj iza glave","Ispruži ruke"]}
+ facepull:{a:{hip:[84,77],t:-4,foot:[86,145],hand:[126,34],hz:4},b:{hip:[84,77],t:-4,foot:[86,145],hand:[92,24],hz:19},eOut:2.5,
+  props:[["cable",180,26,"hand"],["handle","hand",0]],tm:[1.1,.6,2.2,.3],cap:["Povuci ka čelu","Vraćaj 2 s"]},
+ hammer:{a:{hip:[96,77],t:0,foot:[96,145],hand:[99,80],hz:14},b:{hip:[96,77],t:0,foot:[96,145],hand:[111,48],hz:12},
+  props:[["db","hand","y"]],tm:[1.1,.4,2.4,.3],cap:["Savij ruke","Spuštaj 2–3 s"]},
+ ohtri:{a:{hip:[96,77],t:0,foot:[96,145],hand:[98,-14],hz:3},b:{hip:[96,77],t:0,foot:[96,145],hand:[84,24],hz:3},eDir:-1,
+  props:[["db1","hand","y"]],tm:[2.2,.3,1.1,.4],cap:["Spuštaj iza glave","Ispruži ruke"]}
 };
 var FIG=(function(){
-  var BASE={th:36,sh:34,to:44,ua:25,fa:23};
-  function ik(a,b,l1,l2,dir){
-    var dx=b[0]-a[0],dy=b[1]-a[1],d=Math.sqrt(dx*dx+dy*dy)||.01,mx=l1+l2-.4,mn=Math.abs(l1-l2)+.4,dd=Math.max(mn,Math.min(mx,d));
-    var base=Math.atan2(dy,dx),a1=Math.acos(Math.max(-1,Math.min(1,(l1*l1+dd*dd-l2*l2)/(2*l1*dd)))),g=base+dir*a1;
-    return {mid:[a[0]+l1*Math.cos(g),a[1]+l1*Math.sin(g)],end:dd===d?b:[a[0]+dd*Math.cos(base),a[1]+dd*Math.sin(base)]};
-  }
-  function mix(p,q,k){return q==null?p:(p==null?q:[p[0]+(q[0]-p[0])*k,p[1]+(q[1]-p[1])*k]);}
-  function arc(p,q,k,c){var a0=Math.atan2(p[1]-c[1],p[0]-c[0]),a1=Math.atan2(q[1]-c[1],q[0]-c[0]),r0=Math.sqrt(Math.pow(p[0]-c[0],2)+Math.pow(p[1]-c[1],2)),r1=Math.sqrt(Math.pow(q[0]-c[0],2)+Math.pow(q[1]-c[1],2)),d=a1-a0;if(d>Math.PI)d-=2*Math.PI;if(d<-Math.PI)d+=2*Math.PI;var a=a0+d*k,r=r0+(r1-r0)*k;return [c[0]+r*Math.cos(a),c[1]+r*Math.sin(a)];}
+  var BASE={th:36,sh:34,to:44,ua:25,fa:23,sw:10.5,hw:7};
+  var YAW=36*Math.PI/180,CT=Math.cos(YAW),ST=Math.sin(YAW),SP=Math.sin(17*Math.PI/180),CX=100,G=151;
+  /* world [x,y,z] -> [screen x, screen y, depth toward the viewer] */
+  function P(v){var x=v[0]-CX,z=v[2]||0,d=x*ST+z*CT;return [CX+x*CT-z*ST,v[1]+d*SP,d];}
+  function sub(a,b){return [a[0]-b[0],a[1]-b[1],(a[2]||0)-(b[2]||0)];}
+  function add(a,b,k){k=k==null?1:k;return [a[0]+b[0]*k,a[1]+b[1]*k,(a[2]||0)+(b[2]||0)*k];}
+  function len(a){return Math.sqrt(a[0]*a[0]+a[1]*a[1]+(a[2]||0)*(a[2]||0));}
+  function dot3(a,b){return a[0]*b[0]+a[1]*b[1]+(a[2]||0)*(b[2]||0);}
+  function lerp(a,b,k){return [a[0]+(b[0]-a[0])*k,a[1]+(b[1]-a[1])*k,(a[2]||0)+((b[2]||0)-(a[2]||0))*k];}
   function f(n){return Math.round(n*10)/10;}
-  function ln(p,q,w,c){return '<line x1="'+f(p[0])+'" y1="'+f(p[1])+'" x2="'+f(q[0])+'" y2="'+f(q[1])+'" stroke="var(--'+c+')" stroke-width="'+w+'" stroke-linecap="round"/>';}
-  function dot(p,r,c,extra){return '<circle cx="'+f(p[0])+'" cy="'+f(p[1])+'" r="'+r+'" fill="var(--'+c+')"'+(extra||"")+'/>';}
-  function limb(a,m,e,w1,w2,c){return ln(a,m,w1,c)+ln(m,e,w2,c)+dot(m,Math.min(w1,w2)*.32,"fig-joint");}
-  /* joints for one side of the body */
-  function side(sp,k,far,L){
-    var A=sp.a,B=sp.b,sfx=far?"2":"";
-    var hand=mix(A["hand"+sfx]||(far?A.hand:null),B["hand"+sfx]||(far?B.hand:null),k),foot=mix(A["foot"+sfx]||(far?A.foot:null),B["foot"+sfx]||(far?B.foot:null),k);
-    var toe=mix(A["toe"+sfx]||(far?A.toe:null)||[12,4],B["toe"+sfx]||(far?B.toe:null)||[12,4],k);
-    if(sp.arcFoot&&A.foot&&B.foot)foot=arc(A["foot"+sfx]||A.foot,B["foot"+sfx]||B.foot,k,sp.view==="front"?[7,0]:mix(A.hip,B.hip,k));
-    if(sp.arcHand&&A.hand&&B.hand)hand=arc(A.hand,B.hand,k,sp.view==="front"?[13,A.hip[1]-L.to+2]:[0,0]);
-    return {hand:hand,foot:foot,toe:toe,eDir:(far&&sp.eDir2!=null)?sp.eDir2:(sp.eDir==null?1:sp.eDir),kDir:(far&&sp.kDir2!=null)?sp.kDir2:(sp.kDir==null?-1:sp.kDir)};
+  /* side-plane IK, used only to find which way a joint bends */
+  function bend2(a,b,l1,l2,dir){
+    var dx=b[0]-a[0],dy=b[1]-a[1],d=Math.sqrt(dx*dx+dy*dy)||.01,dd=Math.max(Math.abs(l1-l2)+.4,Math.min(l1+l2-.4,d));
+    var g=Math.atan2(dy,dx)+dir*Math.acos(Math.max(-1,Math.min(1,(l1*l1+dd*dd-l2*l2)/(2*l1*dd))));
+    return [Math.cos(g),Math.sin(g),0];
   }
-  function props(sp,J,layer){
-    var h="";(sp.props||[]).forEach(function(p){
-      var t=p[0],back=(t==="rect"||t==="seg"||t==="cable"||t==="segj"||t==="pad");
-      if(back!==(layer===0))return;
-      var js=J[p[1]]?(J.mirror&&J[p[1]+"M"]?[J[p[1]],J[p[1]+"M"]]:[J[p[1]]]):[];
-      if(t==="rect")h+='<rect x="'+p[1]+'" y="'+p[2]+'" width="'+p[3]+'" height="'+p[4]+'" rx="2.5" fill="var(--fig-gear)"/>';
-      else if(t==="seg")h+=ln([p[1],p[2]],[p[3],p[4]],p[5],"fig-gear");
-      else if(t==="cable"){var j=J[p[3]];h+='<line x1="'+p[1]+'" y1="'+p[2]+'" x2="'+f(j[0])+'" y2="'+f(j[1])+'" stroke="var(--fig-gear)" stroke-width="1.6"/>';}
-      else js.forEach(function(j,i){
-        var s=i?-1:1;
-        if(t==="segj")h+=ln([j[0]+p[2],j[1]+p[3]],[j[0]+p[4],j[1]+p[5]],p[6],"fig-gear");
-        else if(t==="pad")h+=dot([j[0]+s*p[2],j[1]+p[3]],p[4],"fig-gear");
-        else if(t==="plate"){var c=[j[0]+p[2],j[1]+p[3]];h+='<circle cx="'+f(c[0])+'" cy="'+f(c[1])+'" r="'+p[4]+'" fill="none" stroke="var(--accent)" stroke-width="4"/>'+dot(c,2.6,"accent");}
-        else if(t==="db")h+=dot(j,6,"accent")+dot(j,2.2,"fig-joint");
-        else if(t==="dot")h+=dot(j,p[2],"accent");
-      });
-    });return h;
+  function ik3(a,b,l1,l2,pole){
+    var ab=sub(b,a),d=len(ab)||.01,dd=Math.max(Math.abs(l1-l2)+.4,Math.min(l1+l2-.4,d)),ax=[ab[0]/d,ab[1]/d,ab[2]/d];
+    var c=Math.max(-1,Math.min(1,(l1*l1+dd*dd-l2*l2)/(2*l1*dd))),s=Math.sqrt(1-c*c),pp=add(pole,ax,-dot3(pole,ax)),pl=len(pp);
+    if(pl<1e-4){pp=[-ax[1],ax[0],0];pl=len(pp)||1;}
+    return {mid:add(add(a,ax,l1*c),pp,l1*s/pl),end:dd===d?b:add(a,ax,dd)};
   }
+  /* shapes: each returns SVG markup; `st` adds the outline */
+  var LINE=' stroke="var(--fg-line)" stroke-width=".9" stroke-linejoin="round"';
+  function cap(p,q,r1,r2,fill,st){
+    var dx=q[0]-p[0],dy=q[1]-p[1],l=Math.sqrt(dx*dx+dy*dy);
+    if(l<.6)return '<circle cx="'+f(p[0])+'" cy="'+f(p[1])+'" r="'+f(Math.max(r1,r2))+'" fill="'+fill+'"'+(st?LINE:"")+'/>';
+    var nx=-dy/l,ny=dx/l;
+    return '<path d="M'+f(p[0]+nx*r1)+" "+f(p[1]+ny*r1)+"L"+f(q[0]+nx*r2)+" "+f(q[1]+ny*r2)+"A"+r2+" "+r2+" 0 0 0 "+f(q[0]-nx*r2)+" "+f(q[1]-ny*r2)+"L"+f(p[0]-nx*r1)+" "+f(p[1]-ny*r1)+"A"+r1+" "+r1+" 0 0 0 "+f(p[0]+nx*r1)+" "+f(p[1]+ny*r1)+'Z" fill="'+fill+'"'+(st?LINE:"")+'/>';
+  }
+  function poly(pts,fill,st){return '<path d="M'+pts.map(function(p){return f(p[0])+" "+f(p[1]);}).join("L")+'Z" fill="'+fill+'"'+(st?LINE:"")+'/>';}
+  function circ(p,r,fill,st){return '<circle cx="'+f(p[0])+'" cy="'+f(p[1])+'" r="'+r+'" fill="'+fill+'"'+(st?LINE:"")+'/>';}
+  function seg(p,q,w,col){return '<line x1="'+f(p[0])+'" y1="'+f(p[1])+'" x2="'+f(q[0])+'" y2="'+f(q[1])+'" stroke="'+col+'" stroke-width="'+w+'" stroke-linecap="round"/>';}
+  function disc(c,r,fill){var pts=[],i;for(i=0;i<18;i++){var a=i/18*Math.PI*2;pts.push(P([c[0]+Math.cos(a)*r,c[1]+Math.sin(a)*r,c[2]]));}return poly(pts,fill,true);}
+  var C={skin:"var(--fg-skin)",skin2:"var(--fg-skin2)",top:"var(--fg-top)",top2:"var(--fg-top2)",leg:"var(--fg-leg)",leg2:"var(--fg-leg2)",shoe:"var(--fg-shoe)",hair:"var(--fg-hair)",
+    gear:"var(--fg-gear)",gearT:"var(--fg-gear-top)",gearD:"var(--fg-gear-dark)",metal:"var(--fg-metal)",w:"var(--fg-weight)",w2:"var(--fg-weight2)"};
+
   /* inner SVG markup for exercise spec `sp` at blend k (0 = pose a, 1 = pose b) */
   function draw(sp,k){
     var L={},n;for(n in BASE)L[n]=(sp.len&&sp.len[n])||BASE[n];
-    var hip=mix(sp.a.hip,sp.b.hip,k),h="",J;
-    if(sp.view==="front"){
-      var sh=[hip[0],hip[1]-L.to],head=[hip[0],sh[1]-15],S=side(sp,k,false,L),parts=[];
-      J={hip:hip,sh:sh,mirror:true};
-      [1,-1].forEach(function(s){
-        var sj=[sh[0]+s*13,sh[1]+2],hj=[hip[0]+s*7,hip[1]];
-        var arm=ik(sj,[hip[0]+s*S.hand[0],S.hand[1]],L.ua,L.fa,s*(sp.eDir==null?1:sp.eDir)),leg=ik(hj,[hip[0]+s*S.foot[0],S.foot[1]],L.th,L.sh,-s*(sp.kDir==null?1:sp.kDir));
-        var key=s>0?"":"M";J["hand"+key]=arm.end;J["kn"+key]=leg.mid;J["foot"+key]=leg.end;
-        parts.push(limb(hj,leg.mid,leg.end,12,9,"fig")+ln(leg.end,[leg.end[0]+s*6,leg.end[1]+3],6,"fig")+limb(sj,arm.mid,arm.end,8,7,"fig")+dot(arm.end,3.6,"fig"));
-      });
-      h+=props(sp,J,0)+parts[0].replace(/^(.*?)(<line[^>]*stroke-width="8".*)$/,"$1")+parts[1].replace(/^(.*?)(<line[^>]*stroke-width="8".*)$/,"$1");
-      h+='<path d="M'+f(sh[0]-14)+" "+f(sh[1]+1)+" Q"+f(sh[0])+" "+f(sh[1]-5)+" "+f(sh[0]+14)+" "+f(sh[1]+1)+" L"+f(hip[0]+10)+" "+f(hip[1]+3)+" Q"+f(hip[0])+" "+f(hip[1]+8)+" "+f(hip[0]-10)+" "+f(hip[1]+3)+'Z" fill="var(--fig)" stroke="var(--fig)" stroke-width="5" stroke-linejoin="round"/>';
-      h+=ln(sh,[sh[0],sh[1]-6],6,"fig")+'<ellipse cx="'+f(head[0])+'" cy="'+f(head[1])+'" rx="7.5" ry="8.5" fill="var(--fig)"/>';
-      h+=parts[0].replace(/^(.*?)(<line[^>]*stroke-width="8".*)$/,"$2")+parts[1].replace(/^(.*?)(<line[^>]*stroke-width="8".*)$/,"$2");
-      return h+props(sp,J,1);
+    var A=sp.a,B=sp.b,hip2=lerp(A.hip,B.hip,k),t=(A.t+(B.t-A.t)*k)*Math.PI/180,u=[Math.sin(t),-Math.cos(t),0],fw=[Math.cos(t),Math.sin(t),0];
+    var hip=[hip2[0],hip2[1],0],shm=add(hip,u,L.to),Q=[],S={};
+    function put(d,h){Q.push([d,h]);}
+    function tgt(pose,key,far,zk,zdef){
+      var p=(far&&pose[key+"2"])||pose[key],z=(far&&pose[zk+"2"]!=null)?pose[zk+"2"]:(pose[zk]!=null?pose[zk]:zdef);
+      return [p[0],p[1],(far?-1:1)*z];
     }
-    var t=(sp.a.t+(sp.b.t-sp.a.t)*k)*Math.PI/180,ux=Math.sin(t),uy=-Math.cos(t);
-    var sh2=[hip[0]+L.to*ux,hip[1]+L.to*uy],head2=[sh2[0]+15*ux,sh2[1]+15*uy];
-    var N=side(sp,k,false,L),F=side(sp,k,true,L);
-    var nl=ik(hip,N.foot,L.th,L.sh,N.kDir),fl=ik(hip,F.foot,L.th,L.sh,F.kDir),na=ik(sh2,N.hand,L.ua,L.fa,N.eDir),fa=ik(sh2,F.hand,L.ua,L.fa,F.eDir);
-    J={hip:hip,sh:sh2,hand:na.end,kn:nl.mid,foot:nl.end,el:na.mid};
-    h+=props(sp,J,0);
-    h+=limb(sh2,fa.mid,fa.end,8,7,"fig-far")+dot(fa.end,3.6,"fig-far");
-    h+=limb(hip,fl.mid,fl.end,12,9,"fig-far")+ln(fl.end,[fl.end[0]+F.toe[0],fl.end[1]+F.toe[1]],6,"fig-far");
-    h+=ln(hip,sh2,17,"fig")+ln(sh2,[sh2[0]+6*ux,sh2[1]+6*uy],7,"fig");
-    h+='<ellipse cx="'+f(head2[0])+'" cy="'+f(head2[1])+'" rx="7.5" ry="8.5" transform="rotate('+f(t*180/Math.PI)+" "+f(head2[0])+" "+f(head2[1])+')" fill="var(--fig)"/>';
-    h+=limb(hip,nl.mid,nl.end,12,9,"fig")+ln(nl.end,[nl.end[0]+N.toe[0],nl.end[1]+N.toe[1]],6,"fig")+dot(hip,3.6,"fig-joint");
-    h+=limb(sh2,na.mid,na.end,8,7,"fig")+dot(na.end,3.6,"fig")+dot(sh2,2.8,"fig-joint");
-    return h+props(sp,J,1);
+    [1,-1].forEach(function(s){
+      var far=s<0,sj=add(shm,[0,0,s*L.sw]),hj=add(hip,[0,0,s*L.hw]);
+      var hA=tgt(A,"hand",far,"hz",L.sw),hB=tgt(B,"hand",far,"hz",L.sw),fA=tgt(A,"foot",far,"fz",L.hw+1),fB=tgt(B,"foot",far,"fz",L.hw+1);
+      var hand=lerp(hA,hB,k),foot=lerp(fA,fB,k),v;
+      if(sp.arcHand){v=sub(hand,sj);hand=add(sj,v,(len(sub(hA,sj))+(len(sub(hB,sj))-len(sub(hA,sj)))*k)/(len(v)||1));}
+      if(sp.arcFoot){v=sub(foot,hj);foot=add(hj,v,(len(sub(fA,hj))+(len(sub(fB,hj))-len(sub(fA,hj)))*k)/(len(v)||1));}
+      var toeA=(far&&A.toe2)||A.toe||[12,4],toeB=(far&&B.toe2)||B.toe||[12,4],toe=lerp(toeA,toeB,k);
+      var eDir=(far&&sp.eDir2!=null)?sp.eDir2:(sp.eDir==null?1:sp.eDir),kDir=(far&&sp.kDir2!=null)?sp.kDir2:(sp.kDir==null?-1:sp.kDir);
+      var ep=bend2(sj,hand,L.ua,L.fa,eDir),kp=bend2(hj,foot,L.th,L.sh,kDir);ep[2]=s*(sp.eOut||0);kp[2]=s*(sp.kOut||0);
+      var arm=ik3(sj,hand,L.ua,L.fa,ep),leg=ik3(hj,foot,L.th,L.sh,kp),toe3=add(leg.end,[toe[0],toe[1],s*1.5]);
+      S[s]={sj:sj,hj:hj,el:arm.mid,hand:arm.end,kn:leg.mid,foot:leg.end,toe:toe3};
+      var pS=P(sj),pE=P(arm.mid),pH=P(arm.end),pJ=P(hj),pK=P(leg.mid),pF=P(leg.end),pT=P(toe3),sk=far?C.skin2:C.skin,lg=far?C.leg2:C.leg,tp=far?C.top2:C.top;
+      put((pJ[2]+pK[2])/2,cap(pJ,pK,7.2,5.2,lg,true));
+      put((pK[2]+pF[2])/2,cap(pK,pF,5,3.3,lg,true));
+      put((pF[2]+pT[2])/2+.2,cap(pF,pT,3.5,2.8,C.shoe,true));
+      put((pS[2]+pE[2])/2,cap(pS,pE,4.4,3.6,sk,true)+cap(pS,[pS[0]+(pE[0]-pS[0])*.4,pS[1]+(pE[1]-pS[1])*.4],5,4.5,tp,true));
+      put((pE[2]+pH[2])/2,cap(pE,pH,3.5,2.6,sk,true));
+      put(pH[2]+.3,circ(pH,3.1,sk,true));
+    });
+    /* torso, hips, neck, head */
+    var sL=P(S[1].sj),sR=P(S[-1].sj),hL=P(S[1].hj),hR=P(S[-1].hj),pm=P(shm),ph=P(hip),wst=P(add(hip,u,L.to*.42));
+    var wl=[wst[0]+(hL[0]-ph[0])*1.05,wst[1]+(hL[1]-ph[1])*1.05],wr=[wst[0]+(hR[0]-ph[0])*1.05,wst[1]+(hR[1]-ph[1])*1.05];
+    function body(st){return cap(sL,sR,5.6,5.6,C.top,st)+cap(sL,wl,6.2,5.4,C.top,st)+cap(sR,wr,6.2,5.4,C.top2,st)+cap(wl,hL,5.4,6.6,C.top,st)+cap(wr,hR,5.4,6.6,C.top2,st)+poly([sL,sR,wr,hR,hL,wl],C.top,st);}
+    function hips(st){return cap(hL,hR,7.6,7.6,C.leg,st)+cap([(hL[0]+hR[0])/2,(hL[1]+hR[1])/2],P(add(hip,u,7)),8.6,8,C.leg,st);}
+    put((pm[2]+ph[2])/2,body(true)+body(false)+hips(true)+hips(false));
+    var hc=P(add(shm,u,15.5)),nb=P(add(shm,u,3)),fS=[fw[0]*CT,fw[1]+fw[0]*ST*SP],uS=[u[0]*CT,u[1]+u[0]*ST*SP],rot=' transform="rotate('+f(t*180/Math.PI*.85)+" "+f(hc[0])+" "+f(hc[1])+')"';
+    var pt0=[hc[0]-fS[0]*6+uS[0]*2.5,hc[1]-fS[1]*6+uS[1]*2.5],pt1=[pt0[0]-fS[0]*5-uS[0]*2,pt0[1]-fS[1]*5-uS[1]*2+8.5];
+    var head=cap(pt0,pt1,2.9,1.7,C.hair,true)+cap(nb,hc,3.1,3.1,C.skin2,true)+
+      '<ellipse cx="'+f(hc[0]-fS[0]*1.5+uS[0]*1.2)+'" cy="'+f(hc[1]-fS[1]*1.5+uS[1]*1.2)+'" rx="7.5" ry="8.3" fill="'+C.hair+'"'+LINE+rot+'/>'+
+      '<ellipse cx="'+f(hc[0]+fS[0]*1.5-uS[0]*.8)+'" cy="'+f(hc[1]+fS[1]*1.5-uS[1]*.8)+'" rx="5.9" ry="6.9" fill="'+C.skin+'"'+rot+'/>';
+    put(hc[2]+.5,head);
+    /* equipment */
+    var M={hip:hip,sh:shm,hand:lerp(S[1].hand,S[-1].hand,.5),kn:lerp(S[1].kn,S[-1].kn,.5),foot:lerp(S[1].foot,S[-1].foot,.5)};
+    (sp.props||[]).forEach(function(p){
+      var ty=p[0],j,c,zc,zh,a,b,h="";
+      if(ty==="rect"){
+        zc=p[5]||0;zh=p[6]||15;var x0=p[1],y0=p[2],x1=p[1]+p[3],y1=p[2]+p[4],zn=zc+zh,zf=zc-zh;
+        h=poly([P([x0,y0,zn]),P([x1,y0,zn]),P([x1,y1,zn]),P([x0,y1,zn])],C.gear,true)+poly([P([x1,y0,zn]),P([x1,y0,zf]),P([x1,y1,zf]),P([x1,y1,zn])],C.gearD,true)+poly([P([x0,y0,zf]),P([x1,y0,zf]),P([x1,y0,zn]),P([x0,y0,zn])],C.gearT,true);
+        put(P([(x0+x1)/2,(y0+y1)/2,zc])[2]-5,h);
+      }else if(ty==="seg"){
+        zc=p[6]||0;
+        if(p[5]>=6){zh=p[7]||13;put(P([(p[1]+p[3])/2,(p[2]+p[4])/2,zc])[2]-5,poly([P([p[1],p[2],zc-zh]),P([p[3],p[4],zc-zh]),P([p[3],p[4],zc+zh]),P([p[1],p[2],zc+zh])],C.gearT,true));}
+        else put(P([(p[1]+p[3])/2,(p[2]+p[4])/2,zc])[2]-5,seg(P([p[1],p[2],zc]),P([p[3],p[4],zc]),p[5],C.gearD));
+      }else if(ty==="cable"){j=M[p[3]];put(P(j)[2]-.5,'<line x1="'+f(P([p[1],p[2],0])[0])+'" y1="'+f(P([p[1],p[2],0])[1])+'" x2="'+f(P(j)[0])+'" y2="'+f(P(j)[1])+'" stroke="'+C.metal+'" stroke-width="1.3"/>');}
+      else if(ty==="handle"){a=S[1][p[1]];b=S[-1][p[1]];var e=p[2]||0;put(P(M[p[1]])[2]-.6,seg(P(add(a,[0,0,e])),P(add(b,[0,0,-e])),2.6,C.metal));}
+      else if(ty==="pad"){a=add(S[1][p[1]],[p[2],p[3],3]);b=add(S[-1][p[1]],[p[2],p[3],-3]);put(P(lerp(a,b,.5))[2]-1.5,seg(P(a),P(b),p[4]*2,C.gearD));}
+      else if(ty==="padz"){[1,-1].forEach(function(s){c=add(S[s][p[1]],[0,0,s*8]);put(P(c)[2]+(s>0?1:-1),disc(c,p[2],C.gearD));});}
+      else if(ty==="segj"){j=M[p[1]];put(P(j)[2]-3,poly([P([j[0]+p[2],j[1]+p[3],-17]),P([j[0]+p[4],j[1]+p[5],-17]),P([j[0]+p[4],j[1]+p[5],17]),P([j[0]+p[2],j[1]+p[3],17])],C.gearT,true));}
+      else if(ty==="bar"){
+        j=M[p[1]];c=[j[0]+p[2],j[1]+p[3],0];
+        put(P(c)[2]+(p[1]==="sh"?-3:1.2),seg(P(add(c,[0,0,44])),P(add(c,[0,0,-44])),2.4,C.metal));
+        [1,-1].forEach(function(s){put(P(add(c,[0,0,s*37]))[2]+(s>0?4:-4),disc(add(c,[0,0,s*34]),p[4],s>0?C.w2:C.w)+disc(add(c,[0,0,s*38]),p[4],s>0?C.w:C.w2));});
+      }else if(ty==="db"||ty==="db1"){
+        (ty==="db1"?[1]:[1,-1]).forEach(function(s){
+          j=ty==="db1"&&p[1]==="hand"&&Math.abs(S[1].hand[2])<5?M.hand:S[s][p[1]];
+          var ax=p[2]==="x"?[1,0,0]:(p[2]==="y"?[0,1,0]:[0,0,1]),e0=P(add(j,ax,6.5)),e1=P(add(j,ax,-6.5)),near=e0[2]>e1[2];
+          put(P(j)[2]+.8,circ(near?e1:e0,4.3,C.w2,true)+seg(e0,e1,2,C.metal)+circ(near?e0:e1,4.3,C.w,true));
+        });
+      }
+    });
+    Q.sort(function(x,y){return x[0]-y[0];});
+    var sc=P([hip[0],G,0]),fl=[P([14,G,-44]),P([186,G,-44]),P([186,G,44]),P([14,G,44])];
+    return poly(fl,"var(--fg-floor)",false)+'<ellipse cx="'+f(sc[0])+'" cy="'+f(sc[1])+'" rx="34" ry="9" fill="var(--fg-shadow)"/>'+Q.map(function(q){return q[1];}).join("");
   }
   function ease(x){return x<.5?2*x*x:1-Math.pow(-2*x+2,2)/2;}
   /* blend and phase (0 = moving a→b, 1 = moving b→a) at time `sec` */
@@ -713,7 +755,7 @@ var FIG=(function(){
     if(x<m[0]+m[1]+m[2])return {k:1-ease((x-m[0]-m[1])/m[2]),ph:1};
     return {k:0,ph:1};
   }
-  return {draw:draw,at:at};
+  return {draw:draw,at:at,view:"24 -36 152 206"};
 })();
 
 /* ---------- "how to" template: key cue, video, setup, execution, tempo, feel, mistakes, swap ---------- */
@@ -742,7 +784,7 @@ function howHtml(ex){
 }
 function figHtml(ex){
   var sp=FIGS[ex.id];if(!sp)return "";
-  return '<div class="fig" data-fig="'+ex.id+'"><svg viewBox="0 -26 200 184" role="img" aria-label="Animacija vježbe: '+esc(ex.name)+'"><line x1="0" y1="151" x2="200" y2="151" stroke="var(--fig-gear)" stroke-width="1.5"/><g>'+FIG.draw(sp,0)+'</g></svg><div class="figcap"><span class="phase">'+esc(sp.cap[0])+'</span></div></div>';
+  return '<div class="fig" data-fig="'+ex.id+'"><svg viewBox="'+FIG.view+'" role="img" aria-label="Animacija vježbe: '+esc(ex.name)+'"><g>'+FIG.draw(sp,0)+'</g></svg><div class="figcap"><span class="phase">'+esc(sp.cap[0])+'</span></div></div>';
 }
 /* one animation loop, alive only while some accordion is open */
 var figRaf=null;
