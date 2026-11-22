@@ -7,6 +7,7 @@
   --bg:#F5F4F8; --surface:#FFFFFF; --ink:#1C1929; --muted:#676279; --line:#DFDCE8;
   --accent:#A81E5B; --accent-ink:#FFFFFF; --accent-soft:#F8E4EC;
   --ok:#0B7A66; --ok-ink:#FFFFFF; --ok-soft:#DDF2EC;
+  --fig:#3B3550; --fig-far:#9A94AE; --fig-joint:#F5F4F8; --fig-gear:#C9C5D6;
   --display:"Barlow Condensed","Avenir Next Condensed","Roboto Condensed","Arial Narrow",Arial,sans-serif;
   --body:"Barlow",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
 }
@@ -14,13 +15,15 @@
   :root:not([data-theme="light"]){
     --bg:#14121B; --surface:#1E1B28; --ink:#EFEDF6; --muted:#A6A1B8; --line:#343043;
     --accent:#F27AA8; --accent-ink:#2A0A18; --accent-soft:#3A1A29;
-    --ok:#4FD1B5; --ok-ink:#06261F; --ok-soft:#143A33; color-scheme:dark;
+    --ok:#4FD1B5; --ok-ink:#06261F; --ok-soft:#143A33;
+    --fig:#DCD7EC; --fig-far:#756F8A; --fig-joint:#14121B; --fig-gear:#474258; color-scheme:dark;
   }
 }
 :root[data-theme="dark"]{
   --bg:#14121B; --surface:#1E1B28; --ink:#EFEDF6; --muted:#A6A1B8; --line:#343043;
   --accent:#F27AA8; --accent-ink:#2A0A18; --accent-soft:#3A1A29;
-  --ok:#4FD1B5; --ok-ink:#06261F; --ok-soft:#143A33; color-scheme:dark;
+  --ok:#4FD1B5; --ok-ink:#06261F; --ok-soft:#143A33;
+    --fig:#DCD7EC; --fig-far:#756F8A; --fig-joint:#14121B; --fig-gear:#474258; color-scheme:dark;
 }
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5}
@@ -81,11 +84,37 @@ main{padding-block:20px 120px;display:flex;flex-direction:column;gap:24px}
 .check{height:46px;border-radius:8px;border:1px solid var(--line);background:var(--surface);font-size:1.2rem;line-height:1;color:var(--muted)}
 .set.done .check{background:var(--ok);border-color:var(--ok);color:var(--ok-ink)}
 .set.done .field input{background:var(--ok-soft);border-color:var(--ok-soft)}
-details{border:1px solid var(--line);border-radius:8px;background:var(--surface)}
-summary{padding:10px 12px;font-weight:600;cursor:pointer;font-size:.95rem}
-.how{padding:0 12px 12px;display:flex;flex-direction:column;gap:10px;font-size:.95rem}
-.how ol{margin:0;padding-left:1.2rem;display:flex;flex-direction:column;gap:4px}
-.how .lbl{font-size:.72rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:600;display:block}
+.acc{border:1px solid var(--line);border-radius:8px;background:var(--surface);overflow:hidden}
+.acc summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;font-weight:600;cursor:pointer;font-size:.95rem;-webkit-tap-highlight-color:transparent}
+.acc summary::-webkit-details-marker{display:none}
+.chev{flex:none;width:9px;height:9px;margin-right:4px;border-right:2px solid var(--accent);border-bottom:2px solid var(--accent);transform:translateY(-2px) rotate(45deg);transition:transform .38s cubic-bezier(.2,.7,.2,1)}
+.acc.on .chev{transform:translateY(2px) rotate(-135deg)}
+.acc-body{display:grid;grid-template-rows:0fr;transition:grid-template-rows .38s cubic-bezier(.2,.7,.2,1)}
+.acc.on .acc-body{grid-template-rows:1fr}
+.acc-in{min-height:0;overflow:hidden}
+.how{padding:2px 12px 14px;display:flex;flex-direction:column;gap:16px;font-size:.95rem;opacity:0;transform:translateY(-10px);transition:opacity .3s ease,transform .38s cubic-bezier(.2,.7,.2,1)}
+.acc.on .how{opacity:1;transform:none}
+.keycue{font-family:var(--display);font-weight:600;font-size:1.25rem;line-height:1.2;background:var(--accent-soft);border-radius:6px;padding:10px 12px}
+.how h3{font-family:var(--body);font-size:.72rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:5px}
+.how ol,.how ul{margin:0;padding-left:1.25rem;display:flex;flex-direction:column;gap:6px}
+.how ol li::marker{font-family:var(--display);font-weight:700;font-size:1.1em;color:var(--accent)}
+.how ul li::marker{color:var(--muted)}
+.errs{margin:0;display:flex;flex-direction:column;gap:10px}
+.errs dt{font-weight:600}
+.errs dt::before{content:"\2715\00a0";color:var(--accent)}
+.errs dd{margin:2px 0 0;color:var(--muted)}
+.errs dd::before{content:"\2713\00a0";color:var(--ok);font-weight:600}
+.fig{background:var(--bg);border-radius:8px;overflow:hidden}
+.fig svg{display:block;width:100%;height:auto;max-height:260px}
+.figcap{display:flex;justify-content:center;align-items:center;gap:8px;padding:6px 10px 10px;font-family:var(--display);font-weight:600;font-size:1.1rem;letter-spacing:.03em;text-transform:uppercase;color:var(--accent);min-height:2.2em}
+.vid{display:flex;flex-direction:column;gap:6px}
+.vidbtn{position:relative;display:block;width:100%;aspect-ratio:16/9;padding:0;border:0;border-radius:8px;overflow:hidden;background:var(--ink)}
+.vidbtn img{width:100%;height:100%;object-fit:cover;display:block;opacity:.88}
+.vidbtn .play{position:absolute;left:50%;top:50%;width:60px;height:60px;margin:-30px 0 0 -30px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-size:1.4rem;padding-left:4px;transition:transform .2s}
+.vidbtn:active .play{transform:scale(.88)}
+.vid iframe{width:100%;aspect-ratio:16/9;border:0;border-radius:8px;display:block;background:var(--ink)}
+.vidcap{font-size:.82rem;color:var(--muted)}
+.vidcap a{color:var(--accent);font-weight:600}
 .video{display:inline-flex;align-items:center;gap:8px;align-self:flex-start;text-decoration:none;font-weight:600;color:var(--accent);border:1px solid var(--accent);border-radius:8px;padding:8px 12px}
 .btn{height:50px;border-radius:8px;border:0;background:var(--accent);color:var(--accent-ink);font-family:var(--display);font-weight:700;font-size:1.25rem;text-transform:uppercase;letter-spacing:.05em;padding:0 20px}
 .btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);height:42px;font-size:1.05rem}
@@ -154,7 +183,6 @@ main>*:nth-child(n+4){animation-delay:.18s}
 .num{transition:color .25s}
 .ex.complete .num{color:var(--ok)}
 .num.stamp{animation:stamp .45s cubic-bezier(.2,.8,.3,1.2)}
-details[open] .how{animation:rise .3s ease-out}
 .btn.ready{animation:pulse 1.1s ease-in-out 3}
 .timer:not([hidden]){animation:slideup .3s cubic-bezier(.2,.7,.2,1)}
 .timer .strip{position:absolute;left:0;top:0;height:4px;width:100%;background:var(--accent);transform-origin:left;transition:transform .25s linear}
@@ -197,91 +225,226 @@ details[open] .how{animation:rise .3s ease-out}
 /* ---------- plan ---------- */
 var DAYS=[
 {id:"donjiA",short:"Donji A",dow:"Pon",title:"Donji dio A",focus:"Čučanj, zadnja loža i listovi. Najteži trening u nedjelji, zato ide prvi.",ex:[
- {id:"squat",name:"Čučanj sa šipkom",eng:"Back squat",sets:3,lo:6,hi:8,rest:150,step:2.5,m:"kvadriceps, gluteus",
-  cues:["Šipka leži na gornjem dijelu leđa, ne na vratu. Stopala u širini ramena, prsti blago ka spolja.","Udahni duboko i stegni stomak prije svakog ponavljanja.","Spuštaj se kao da sjedaš između peta, koljena idu u pravcu prstiju.","Spusti se bar dok butine ne budu paralelne s podom, pa se odgurni cijelim stopalom."],
-  err:"Koljena upadaju ka unutra ili se pete odižu od poda. Smanji težinu i uspori spuštanje.",alt:"Goblet čučanj s bučicom, dok tehnika ne postane sigurna.",q:"barbell back squat proper form for beginners"},
- {id:"rdl",name:"Rumunsko mrtvo dizanje",eng:"Romanian deadlift",sets:3,lo:8,hi:10,rest:120,step:2.5,m:"zadnja loža, gluteus",
-  cues:["Stani uspravno sa šipkom u rukama, koljena blago savijena i tako ostaju.","Guraj kukove unazad, kao da zadnjicom zatvaraš vrata iza sebe.","Šipka klizi niz butine, leđa su ravna cijelim putem.","Spuštaj dok ne osjetiš jako istezanje zadnje lože (obično malo ispod koljena), pa kukovima naprijed."],
-  err:"Zaobljena leđa ili pretvaranje pokreta u čučanj. Pokret dolazi iz kukova.",alt:"Ista vježba s dvije bučice.",q:"romanian deadlift proper form"},
- {id:"legpress",name:"Nožna presa",eng:"Leg press",sets:3,lo:10,hi:12,rest:120,step:5,m:"kvadriceps, gluteus",
-  cues:["Stopala na sredini platforme, u širini kukova.","Spuštaj polako dok koljena ne dođu blizu grudi, donji dio leđa ostaje na naslonu.","Guraj kroz pete i sredinu stopala.","Na vrhu ne zaključavaj koljena do kraja."],
-  err:"Prekratak pokret s prevelikom težinom.",alt:"Hack čučanj ili goblet čučanj.",q:"leg press proper form"},
- {id:"legcurl",name:"Pregib nogu na mašini",eng:"Leg curl",sets:3,lo:10,hi:15,rest:75,step:2.5,m:"zadnja loža",
-  cues:["Podesi mašinu tako da je osovina u liniji s koljenom.","Privuci pete ka zadnjici bez odizanja kukova.","Zadrži sekundu u skupljenom položaju.","Vraćaj polako, oko dvije sekunde."],
-  err:"Trzanje težine i odizanje kukova sa sjedišta.",alt:"Pregib nogu s loptom na podu.",q:"seated leg curl proper form"},
- {id:"calf",name:"Podizanje na prste",eng:"Calf raise",sets:3,lo:10,hi:15,rest:60,step:2.5,m:"listovi",
-  cues:["Prednji dio stopala je na ivici stepenika ili mašine.","Spusti pete skroz dolje i zadrži sekundu u istezanju.","Popni se što više možeš na prste i zadrži sekundu."],
-  err:"Brzo odskakivanje bez zadržavanja dolje i gore.",alt:"Na nožnoj presi ili s bučicom u ruci na stepeniku.",q:"standing calf raise proper form"},
- {id:"plank",name:"Plank",eng:"Izdržaj na laktovima",sets:3,lo:30,hi:45,rest:60,unit:"s",noKg:true,m:"trbušni zid",
-  cues:["Laktovi ispod ramena, tijelo u ravnoj liniji od glave do peta.","Stegni zadnjicu i stomak, kao da očekuješ udarac.","Diši normalno i drži do zadatog vremena."],
-  err:"Kukovi propadaju ili idu previsoko.",alt:"Plank na koljenima.",q:"plank proper form"}
+ {id:"squat",name:"Čučanj sa šipkom",eng:"Back squat",sets:3,lo:6,hi:8,rest:150,step:2.5,m:"kvadriceps, gluteus",q:"barbell back squat proper form for beginners",
+  key:"Cijelo stopalo na podu, koljena prate prste, grudi i kukovi se dižu zajedno.",
+  setup:["Šipka je na stalku u visini grudi. Podvuci se pod nju tako da leži na mišićima gornjeg dijela leđa, ne na vratu.","Uhvati je malo šire od ramena, skupi lopatice, podigni je ispravljanjem nogu i napravi dva kratka koraka unazad.","Stopala su u širini ramena, prsti okrenuti blago ka spolja. Sigurnosne šipke podesi malo ispod najniže tačke pokreta."],
+  steps:["Udahni duboko u stomak i stegni trup kao da očekuješ udarac.","Savij kukove i koljena u isto vrijeme i spuštaj se između peta. Koljena idu u pravcu prstiju i smiju da pređu ispred njih.","Spusti se bar dok butine ne budu paralelne s podom, s ravnim leđima i petama na podu.","Odgurni pod cijelim stopalom i ustani tako da se grudi i kukovi dižu istom brzinom."],
+  tempo:"Spuštanje 2–3 sekunde, bez odbijanja u dnu, ustajanje snažno. Dah drži tokom ponavljanja, izdahni pri vrhu.",
+  feel:"Prednja strana butina i zadnjica. Donja leđa rade, ali ne smiju da bole.",
+  errs:[["Koljena upadaju ka unutra pri ustajanju.","Zamisli da stopalima razvlačiš pod u stranu i smanji težinu."],["Pete se odižu od poda.","Stani malo šire, okreni prste više ka spolja ili stavi tanke pločice pod pete."],["Kukovi se dižu prvi, pa čučanj postaje pretklon.","Vodi pokret grudima i ne žuri iz dna."]],
+  alt:"Goblet čučanj s bučicom uz grudi, dok pokret ne postane siguran."},
+ {id:"rdl",name:"Rumunsko mrtvo dizanje",eng:"Romanian deadlift",sets:3,lo:8,hi:10,rest:120,step:2.5,m:"zadnja loža, gluteus",q:"romanian deadlift proper form",
+  key:"Kukovi idu unazad, šipka klizi uz noge, leđa ostaju ravna.",
+  setup:["Uzmi šipku sa stalka u visini butina, hvat u širini ramena.","Stopala su u širini kukova, koljena blago savijena i tako ostaju do kraja serije.","Ramena povuci nazad i dolje, pogled je u pod par metara ispred tebe."],
+  steps:["Udahni, stegni stomak i počni da guraš kukove unazad, kao da zadnjicom zatvaraš vrata.","Šipka klizi niz butine i ostaje uz noge. Trup se naginje samo onoliko koliko kukovi idu unazad.","Stani kad osjetiš jako istezanje zadnje lože, obično malo ispod koljena. Leđa su i dalje ravna.","Vrati se guranjem kukova naprijed i stegni zadnjicu na vrhu, bez zabacivanja trupa."],
+  tempo:"Spuštanje oko 3 sekunde, kratka pauza u istezanju, podizanje za sekundu. Udah gore, izdah kad se ispraviš.",
+  feel:"Istezanje i rad zadnje strane butina i zadnjice. U donjim leđima samo napetost, bez bola.",
+  errs:[["Leđa se zaobljuju da bi šipka otišla niže.","Završi pokret ranije. Dubinu određuju kukovi, a ne pod."],["Koljena se savijaju sve više, pa pokret postaje čučanj.","Zaključaj blagi ugao u koljenu i misli samo na kukove unazad."],["Šipka se udaljava od nogu.","Vuci je ka sebi leđnim mišićima, kao da hoćeš da je saviješ oko butina."]],
+  alt:"Ista vježba s dvije bučice uz noge."},
+ {id:"legpress",name:"Nožna presa",eng:"Leg press",sets:3,lo:10,hi:12,rest:120,step:5,m:"kvadriceps, gluteus",q:"leg press proper form",
+  key:"Dubok, kontrolisan pokret s kukovima i leđima zalijepljenim za sjedište.",
+  setup:["Sjedi tako da su zadnjica i donja leđa cijelom površinom na naslonu.","Stopala su na sredini platforme u širini kukova, prsti blago ka spolja.","Ispravi noge, otpusti kočnice i drži se za ručke pored sjedišta."],
+  steps:["Udahni i polako spuštaj platformu savijanjem koljena, koja idu u pravcu prstiju.","Spuštaj dok koljena ne dođu blizu grudi, ali stani prije nego što se zadnjica odvoji od sjedišta.","Odgurni platformu sredinom stopala i petama.","Na vrhu ostavi koljena blago savijena i odmah kreni u sljedeće ponavljanje."],
+  tempo:"Spuštanje 2–3 sekunde, guranje za sekundu. Izdah dok guraš.",
+  feel:"Prednja strana butina i zadnjica.",
+  errs:[["Prevelika težina s pokretom od par centimetara.","Skini težinu i radi pun raspon. Tako noge dobijaju više."],["Zadnjica se odiže, a donja leđa se zaobljuju u dnu.","Skrati pokret taman toliko da leđa ostanu na naslonu."],["Koljena se zaključavaju na vrhu ili ruke guraju koljena.","Ostavi koljena blago savijena, a ruke na ručkama."]],
+  alt:"Hack čučanj ili goblet čučanj."},
+ {id:"legcurl",name:"Pregib nogu na mašini",eng:"Leg curl",sets:3,lo:10,hi:15,rest:75,step:2.5,m:"zadnja loža",q:"seated leg curl proper form",
+  key:"Kukovi miruju, radi samo koljeno, vraćanje je sporo.",
+  setup:["Podesi naslon tako da je koljeno tačno u liniji s osovinom mašine.","Jastuk je iznad pete, na donjem dijelu potkoljenice. Na sjedećoj mašini spusti gornji jastuk čvrsto na butine.","Uhvati ručke i privuci se u sjedište."],
+  steps:["Savij koljena i privuci pete ka zadnjici koliko mašina dozvoljava.","Zadrži sekundu u skupljenom položaju.","Vraćaj polako dok se noge skoro ne ispruže, bez spuštanja tegova na gomilu."],
+  tempo:"Privlačenje za sekundu, pauza sekundu, vraćanje 2–3 sekunde. Izdah pri privlačenju.",
+  feel:"Zadnja strana butina, od koljena do zadnjice.",
+  errs:[["Kukovi se odižu i tijelo trza težinu.","Smanji težinu i drži se za ručke da karlica ostane na mjestu."],["Polovičan pokret bez pune kontrakcije.","Izaberi težinu s kojom možeš da zadržiš sekundu na kraju."]],
+  alt:"Pregib nogu s loptom ležeći na podu."},
+ {id:"calf",name:"Podizanje na prste",eng:"Calf raise",sets:3,lo:10,hi:15,rest:60,step:2.5,m:"listovi",q:"standing calf raise proper form",
+  key:"Skroz dolje, pauza, skroz gore, pauza.",
+  setup:["Prednji dio stopala je na ivici stepenika ili platforme mašine, pete vise u vazduhu.","Koljena su ispružena, ali nisu zaključana. Stopala su u širini kukova, prsti naprijed.","Bez mašine drži bučicu u jednoj ruci, a drugom se pridrži."],
+  steps:["Spusti pete što niže možeš i zadrži sekundu u istezanju.","Popni se na prste što više možeš, preko palca i drugog prsta.","Zadrži sekundu na vrhu, pa spuštaj polako."],
+  tempo:"Dvije sekunde dolje, sekunda pauze, sekunda gore, sekunda pauze.",
+  feel:"Zadnja strana potkoljenice.",
+  errs:[["Brzo odskakivanje bez pauze.","Zastani u dnu. Tetiva inače odradi posao umjesto mišića."],["Stopala se izvrću ka spolja na vrhu.","Guraj kroz palac."]],
+  alt:"Podizanje na prste na nožnoj presi ili na jednoj nozi na stepeniku."},
+ {id:"plank",name:"Plank",eng:"Izdržaj na laktovima",sets:3,lo:30,hi:45,rest:60,unit:"s",noKg:true,m:"trbušni zid",q:"plank proper form",
+  key:"Tijelo je daska: stegnuta zadnjica, stomak i butine.",
+  setup:["Laktovi su tačno ispod ramena, podlaktice paralelne.","Ispruži noge unazad, osloni se na prste, stopala u širini kukova."],
+  steps:["Podigni kukove tako da su glava, leđa i pete u jednoj liniji.","Stegni zadnjicu i podvuci karlicu, kao da pupak vučeš ka rebrima.","Guraj pod laktovima od sebe i gledaj u pod ispred šaka.","Drži do zadatog vremena ili dok kukovi ne počnu da propadaju."],
+  tempo:"Diši plitko i ravnomjerno kroz nos. Ne zadržavaj dah.",
+  feel:"Cijeli stomak, uz zadnjicu i ramena. Ne u donjim leđima.",
+  errs:[["Kukovi propadaju i donja leđa se izvijaju.","Jače stegni zadnjicu. Ako ne pomaže, završi seriju."],["Zadnjica ide visoko u vazduh.","Spusti kukove u liniju s ramenima."]],
+  alt:"Plank na koljenima. Kad 45 s postane lako, podigni jedno stopalo."}
 ]},
 {id:"gornjiA",short:"Gornji A",dow:"Uto",title:"Gornji dio A",focus:"Potisci za grudi i ramena, uz dvije vježbe povlačenja za leđa.",ex:[
- {id:"dbbench",name:"Potisak s klupe bučicama",eng:"Dumbbell bench press",sets:3,lo:6,hi:10,rest:150,step:1,m:"grudi, triceps, prednje rame",
-  cues:["Lezi na ravnu klupu, lopatice skupi i spusti, stopala čvrsto na podu.","Bučice su iznad grudi, laktovi pod uglom od oko 45° u odnosu na tijelo.","Spuštaj polako do visine grudi.","Potisni gore i blago ka sredini, bez sudaranja bučica."],
-  err:"Laktovi rašireni pod 90° i ramena koja se odižu s klupe.",alt:"Potisak na mašini za grudi.",q:"dumbbell bench press proper form"},
- {id:"latpd",name:"Lat povlačenje",eng:"Lat pulldown",sets:3,lo:8,hi:12,rest:120,step:2.5,m:"široki leđni mišić, biceps",
-  cues:["Hvat malo širi od ramena, butine učvršćene ispod jastuka.","Blago se nagni unazad i podigni grudi.","Povuci šipku ka gornjem dijelu grudi, laktovi idu dolje i ka džepovima.","Vraćaj polako dok se ruke potpuno ne ispruže."],
-  err:"Ljuljanje tijelom i povlačenje iza vrata.",alt:"Zgibovi uz pomoć.",q:"lat pulldown proper form"},
- {id:"ohp",name:"Potisak iznad glave bučicama, sjedeći",eng:"Seated dumbbell shoulder press",sets:3,lo:8,hi:10,rest:120,step:1,m:"ramena, triceps",
-  cues:["Naslon skoro uspravan, leđa na naslonu, stomak stegnut.","Bučice kreću od visine ušiju, laktovi malo ispred tijela.","Potisni pravo gore dok se ruke ne ispruže.","Spuštaj kontrolisano do početnog položaja."],
-  err:"Pretjerano izvijanje donjeg dijela leđa.",alt:"Potisak na mašini za ramena.",q:"seated dumbbell shoulder press proper form"},
- {id:"cablerow",name:"Veslanje na sajli, sjedeći",eng:"Seated cable row",sets:3,lo:10,hi:12,rest:90,step:2.5,m:"srednji dio leđa, biceps",
-  cues:["Sjedi uspravno, koljena blago savijena.","Povuci ručku ka stomaku, laktovi uz tijelo.","Na kraju skupi lopatice i zadrži sekundu.","Vraćaj polako, pusti da se lopatice razdvoje, ali trup ostaje miran."],
-  err:"Naginjanje naprijed-nazad da bi se pomjerila težina.",alt:"Veslanje na mašini s osloncem za grudi.",q:"seated cable row proper form"},
- {id:"latraise",name:"Odručenja bučicama",eng:"Lateral raise",sets:3,lo:12,hi:15,rest:60,step:1,m:"srednje rame",
-  cues:["Stani uspravno, bučice uz tijelo, laktovi blago savijeni.","Podiži ruke u stranu do visine ramena, laktovi vode pokret.","Spuštaj sporije nego što si podizala."],
-  err:"Zamah tijelom i podizanje ramena ka ušima. Ovdje ide laka težina.",alt:"Odručenja na sajli.",q:"dumbbell lateral raise proper form"},
- {id:"pushdown",name:"Triceps potisak na sajli",eng:"Triceps pushdown",sets:2,lo:10,hi:15,rest:60,step:2.5,m:"triceps",
-  cues:["Laktovi priljubljeni uz tijelo i ne pomjeraju se.","Potisni ručku dolje dok se ruke potpuno ne ispruže.","Vraćaj polako do ugla od oko 90° u laktu."],
-  err:"Laktovi bježe naprijed i ramena preuzimaju pokret.",alt:"Opružanje s konopcem umjesto šipke.",q:"triceps pushdown proper form"},
- {id:"curl",name:"Biceps pregib bučicama",eng:"Dumbbell curl",sets:2,lo:10,hi:15,rest:60,step:1,m:"biceps",
-  cues:["Stani uspravno, dlanovi gledaju naprijed, laktovi uz tijelo.","Savij ruke bez pomjeranja laktova.","Spuštaj polako do potpuno ispruženih ruku."],
-  err:"Ljuljanje trupom da bi se podigla težina.",alt:"Pregib na sajli ili s EZ šipkom.",q:"dumbbell bicep curl proper form"}
+ {id:"dbbench",name:"Potisak s klupe bučicama",eng:"Dumbbell bench press",sets:3,lo:6,hi:10,rest:150,step:1,m:"grudi, triceps, prednje rame",q:"dumbbell bench press proper form",
+  key:"Lopatice skupljene i spuštene, laktovi pod 45°, bučice idu u blagom luku.",
+  setup:["Sjedi na kraj klupe s bučicama na butinama. Lezi unazad i koljenima pomozi da ih dovedeš do grudi.","Stopala su čvrsto na podu, lopatice skupi i spusti ka džepovima, grudi podigni.","Potisni bučice iznad grudi, dlanovi gledaju ka stopalima."],
+  steps:["Udahni i spuštaj bučice ka spoljnoj strani grudi. Laktovi su pod oko 45° u odnosu na trup.","Spusti dok bučice ne budu u visini grudi, podlaktice su uspravne.","Potisni gore i blago ka sredini, dok se ruke ne ispruže.","Na vrhu ne sudaraj bučice i ne puštaj ramena da odu naprijed."],
+  tempo:"Spuštanje 2–3 sekunde, potisak za sekundu. Udah pri spuštanju, izdah pri potisku.",
+  feel:"Grudi, zatim triceps i prednji dio ramena.",
+  errs:[["Laktovi su rašireni pod 90°, pa bole ramena.","Privuci laktove bliže tijelu, kao strelica, a ne slovo T."],["Ramena se odižu s klupe na vrhu.","Drži lopatice skupljene cijelu seriju."],["Zadnjica se odiže s klupe.","Smanji težinu i guraj stopalima u pod, ne nagore."]],
+  alt:"Potisak na mašini za grudi."},
+ {id:"latpd",name:"Lat povlačenje",eng:"Lat pulldown",sets:3,lo:8,hi:12,rest:120,step:2.5,m:"široki leđni mišić, biceps",q:"lat pulldown proper form",
+  key:"Vuci laktovima ka džepovima, šipka ide do gornjeg dijela grudi.",
+  setup:["Podesi jastuk tako da su butine čvrsto učvršćene.","Uhvati šipku nathvatom, malo šire od ramena.","Sjedi, blago se nagni unazad i podigni grudi ka šipki."],
+  steps:["Prvo spusti ramena od ušiju, pa tek onda savijaj laktove.","Povuci šipku do gornjeg dijela grudi. Laktovi idu dolje i blago unazad.","Zadrži trenutak i skupi lopatice.","Vraćaj polako dok se ruke potpuno ne ispruže i leđa ne istegnu."],
+  tempo:"Povlačenje za sekundu, vraćanje 2–3 sekunde. Izdah pri povlačenju.",
+  feel:"Bočna strana leđa, ispod pazuha. Biceps pomaže.",
+  errs:[["Ljuljanje trupom unazad da bi šipka sišla.","Smanji težinu i zadrži isti nagib trupa."],["Povlačenje iza vrata.","Šipka uvijek ide ispred lica, do grudi."],["Ramena ostaju podignuta ka ušima.","Počni svako ponavljanje spuštanjem ramena."]],
+  alt:"Zgibovi uz pomoć."},
+ {id:"ohp",name:"Potisak iznad glave bučicama, sjedeći",eng:"Seated dumbbell shoulder press",sets:3,lo:8,hi:10,rest:120,step:1,m:"ramena, triceps",q:"seated dumbbell shoulder press proper form",
+  key:"Rebra dolje, podlaktice uspravne, potisak pravo gore.",
+  setup:["Naslon postavi skoro uspravno, jedan zarez unazad od vertikale.","Bučice podigni na butine, pa ih koljenima izbaci do ramena.","Leđa su na naslonu, stopala na podu, stomak stegnut."],
+  steps:["Bučice kreću od visine ušiju, laktovi su malo ispred tijela, a ne skroz u stranu.","Potisni pravo gore dok se ruke ne ispruže iznad ramena.","Spuštaj kontrolisano dok laktovi ne dođu malo ispod visine ramena."],
+  tempo:"Potisak za sekundu, spuštanje 2 sekunde. Izdah pri potisku.",
+  feel:"Prednji i srednji dio ramena, uz triceps.",
+  errs:[["Donji dio leđa se jako izvija.","Stegni stomak i zadnjicu ili spusti naslon za jedan zarez."],["Bučice se spuštaju samo do pola.","Smanji težinu i spuštaj do visine ušiju."]],
+  alt:"Potisak na mašini za ramena."},
+ {id:"cablerow",name:"Veslanje na sajli, sjedeći",eng:"Seated cable row",sets:3,lo:10,hi:12,rest:90,step:2.5,m:"srednji dio leđa, biceps",q:"seated cable row proper form",
+  key:"Trup miruje, laktovi idu unazad uz tijelo, lopatice se skupljaju.",
+  setup:["Stopala su na osloncima, koljena blago savijena.","Uhvati ručku, ispravi leđa i sjedi uspravno s podignutim grudima.","Ruke su ispružene, ramena puštena blago naprijed."],
+  steps:["Prvo povuci ramena unazad, pa nastavi laktovima.","Privuci ručku do stomaka, laktovi klize uz rebra.","Zadrži sekundu sa skupljenim lopaticama.","Vraćaj polako i pusti lopatice da se razdvoje, bez naginjanja trupa naprijed."],
+  tempo:"Povlačenje za sekundu, pauza sekundu, vraćanje 2 sekunde. Izdah pri povlačenju.",
+  feel:"Sredina leđa, između lopatica, i bočna strana leđa.",
+  errs:[["Klaćenje naprijed-nazad cijelim trupom.","Smanji težinu. Trup smije da se pomjeri samo par stepeni."],["Ramena se dižu ka ušima.","Vuci laktove nisko, ka kukovima."]],
+  alt:"Veslanje na mašini s osloncem za grudi."},
+ {id:"latraise",name:"Odručenja bučicama",eng:"Lateral raise",sets:3,lo:12,hi:15,rest:60,step:1,m:"srednje rame",q:"dumbbell lateral raise proper form",
+  key:"Laka težina, laktovi vode, ruke idu u stranu i malo naprijed.",
+  setup:["Stani uspravno, bučice uz butine, laktovi blago savijeni.","Blago se nagni trupom naprijed i spusti ramena od ušiju."],
+  steps:["Podiži ruke u stranu i malo ispred tijela, kao da ih guraš ka zidovima.","Stani kad laktovi dođu do visine ramena. Šaka nije viša od lakta.","Spuštaj sporije nego što si podizala i ne odmaraj u dnu."],
+  tempo:"Podizanje za sekundu, spuštanje 2–3 sekunde. Izdah pri podizanju.",
+  feel:"Spoljna strana ramena. Ako osjećaš vrat, težina je prevelika.",
+  errs:[["Zamah tijelom da bi se bučice podigle.","Uzmi lakše bučice. Ovdje su 2–5 kg sasvim dovoljne."],["Ramena se sliježu ka ušima.","Misli na guranje u stranu, a ne nagore."]],
+  alt:"Odručenja na sajli jednom rukom."},
+ {id:"pushdown",name:"Triceps potisak na sajli",eng:"Triceps pushdown",sets:2,lo:10,hi:15,rest:60,step:2.5,m:"triceps",q:"triceps pushdown proper form",
+  key:"Laktovi su prikovani uz rebra, miče se samo podlaktica.",
+  setup:["Sajlu postavi na najvišu tačku, s konopcem ili kratkom šipkom.","Stani korak od mašine, blago se nagni naprijed, laktove priljubi uz tijelo."],
+  steps:["Potisni ručku dolje dok se ruke potpuno ne ispruže.","Stegni triceps sekundu. Kod konopca na kraju razdvoji krajeve.","Vraćaj polako dok podlaktice ne pređu malo iznad horizontale."],
+  tempo:"Potisak za sekundu, pauza, vraćanje 2 sekunde. Izdah pri potisku.",
+  feel:"Zadnja strana nadlaktice.",
+  errs:[["Laktovi idu naprijed i nazad, pa rade ramena.","Zamisli da su laktovi zavrnuti za rebra."],["Naginjanje cijelim tijelom preko ručke.","Smanji težinu."]],
+  alt:"Isti pokret s drugom ručkom ili gumom."},
+ {id:"curl",name:"Biceps pregib bučicama",eng:"Dumbbell curl",sets:2,lo:10,hi:15,rest:60,step:1,m:"biceps",q:"dumbbell bicep curl proper form",
+  key:"Laktovi stoje u mjestu, do kraja gore i do kraja dolje.",
+  setup:["Stani uspravno, bučice uz tijelo, dlanovi gledaju naprijed.","Laktovi su uz rebra, ramena spuštena, stomak stegnut."],
+  steps:["Savij ruke i podigni bučice do ramena, bez pomjeranja laktova naprijed.","Stegni biceps na vrhu sekundu.","Spuštaj polako dok se ruke potpuno ne ispruže."],
+  tempo:"Podizanje za sekundu, spuštanje 2–3 sekunde. Izdah pri podizanju.",
+  feel:"Prednja strana nadlaktice.",
+  errs:[["Ljuljanje trupom unazad.","Nasloni leđa na zid ili smanji težinu."],["Pokret se skraćuje u dnu.","Svako ponavljanje počinje iz potpuno ispruženih ruku."]],
+  alt:"Pregib na sajli ili naizmjenično, ruka po ruka."}
 ]},
 {id:"donjiB",short:"Donji B",dow:"Čet",title:"Donji dio B",focus:"Gluteus i zadnja loža u prvom planu, noge pojedinačno i trbušnjaci.",ex:[
- {id:"hipthrust",name:"Hip thrust",eng:"Potisak kukovima sa šipkom",sets:4,lo:8,hi:10,rest:150,step:5,m:"gluteus",
-  cues:["Gornji dio leđa (ispod lopatica) je na ivici klupe, šipka preko kukova s podmetačem.","Stopala u širini kukova, tako da su potkoljenice uspravne na vrhu pokreta.","Brada ka grudima, guraj kroz pete i podigni kukove dok trup ne bude ravan.","Na vrhu stegni zadnjicu sekundu, pa spuštaj kontrolisano."],
-  err:"Izvijanje donjeg dijela leđa na vrhu umjesto stezanja zadnjice.",alt:"Glute bridge na podu ili hip thrust na mašini.",q:"barbell hip thrust proper form"},
- {id:"bss",name:"Bugarski čučanj",eng:"Bulgarian split squat",sets:3,lo:8,hi:10,rest:120,step:1,per:"po nozi",m:"kvadriceps, gluteus",
-  cues:["Zadnja noga je na klupi, prednja dovoljno naprijed da peta ostane na podu.","Spuštaj se pravo dolje dok zadnje koljeno ne dođe blizu poda.","Blago se nagni trupom naprijed, težina je na prednjoj nozi.","Odgurni se prednjom nogom. Prvo uradi sve na slabijoj nozi."],
-  err:"Prednje stopalo preblizu klupi, pa se peta odiže.",alt:"Iskorak unazad s bučicama.",q:"bulgarian split squat proper form"},
- {id:"hyper",name:"Hiperekstenzija 45°",eng:"Back extension",sets:3,lo:10,hi:12,rest:90,step:2.5,m:"gluteus, zadnja loža, donja leđa",
-  cues:["Jastuk je ispod kukova, tako da se slobodno savijaš u kuku.","Spusti se s ravnim leđima dok ne osjetiš istezanje zadnje lože.","Podigni se stezanjem zadnjice dok tijelo ne bude u ravnoj liniji, ne više.","Kad postane lako, drži teg na grudima i upiši njegovu težinu."],
-  err:"Prekomjerno izvijanje leđa na vrhu.",alt:"Rumunsko mrtvo dizanje s lakšim bučicama.",q:"45 degree back extension glute focus form"},
- {id:"legext",name:"Opružanje nogu",eng:"Leg extension",sets:2,lo:12,hi:15,rest:75,step:2.5,m:"kvadriceps",
-  cues:["Koljeno je u liniji s osovinom mašine, leđa na naslonu.","Ispruži noge do kraja i zadrži sekundu.","Spuštaj polako, oko dvije sekunde."],
-  err:"Trzanje i odizanje sa sjedišta.",alt:"Goblet čučanj s petama na povišenju.",q:"leg extension proper form"},
- {id:"abd",name:"Abdukcija kukova na mašini",eng:"Hip abduction",sets:2,lo:15,hi:20,rest:60,step:2.5,m:"srednji gluteus",
-  cues:["Sjedi uspravno ili se blago nagni naprijed.","Raširi koljena što više možeš i zadrži sekundu.","Vraćaj polako, tegovi se ne spuštaju do kraja između ponavljanja."],
-  err:"Kratak, brz pokret bez zadržavanja.",alt:"Hodanje u stranu s gumom oko koljena.",q:"hip abduction machine proper form"},
- {id:"legraise",name:"Podizanje nogu ležeći",eng:"Lying leg raise",sets:3,lo:10,hi:15,rest:60,noKg:true,m:"trbušnjaci",
-  cues:["Lezi na leđa, donji dio leđa pritisni uz pod.","Podigni ispružene ili blago savijene noge do vertikale.","Spuštaj polako i stani prije nego što se leđa odvoje od poda."],
-  err:"Leđa se izvijaju pri spuštanju. Tada savij koljena.",alt:"Privlačenje koljena ka grudima.",q:"lying leg raise proper form"}
+ {id:"hipthrust",name:"Hip thrust",eng:"Potisak kukovima sa šipkom",sets:4,lo:8,hi:10,rest:150,step:5,m:"gluteus",q:"barbell hip thrust proper form",
+  key:"Brada ka grudima, rebra dolje, na vrhu stisni zadnjicu.",
+  setup:["Sjedi na pod leđima uz klupu tako da je njena ivica odmah ispod lopatica.","Navuci šipku preko nogu do pregiba kukova i obavezno stavi podmetač.","Stopala su u širini kukova, toliko daleko da su potkoljenice uspravne kad su kukovi gore."],
+  steps:["Uhvati šipku, spusti bradu ka grudima i stegni stomak.","Guraj kroz pete i podiži kukove dok trup ne bude ravan, od ramena do koljena.","Na vrhu podvuci karlicu i stisni zadnjicu sekundu. Pogled ostaje naprijed.","Spuštaj kontrolisano dok tegovi skoro ne dodirnu pod."],
+  tempo:"Podizanje za sekundu, pauza sekundu, spuštanje 2 sekunde. Izdah pri podizanju.",
+  feel:"Zadnjica. Ako radi zadnja loža, privuci stopala; ako rade butine, odmakni ih.",
+  errs:[["Izvijanje donjih leđa na vrhu.","Brada dolje i rebra dolje. Pokret se završava kad su kukovi u liniji."],["Glava zabačena unazad.","Gledaj u isti zid cijelo vrijeme, glava prati trup."],["Guranje preko prstiju.","Blago odigni prste i guraj petama."]],
+  alt:"Glute bridge na podu ili hip thrust na mašini."},
+ {id:"bss",name:"Bugarski čučanj",eng:"Bulgarian split squat",sets:3,lo:8,hi:10,rest:120,step:1,per:"po nozi",m:"kvadriceps, gluteus",q:"bulgarian split squat proper form",
+  key:"Težina je na prednjoj nozi, spuštaš se pravo dolje.",
+  setup:["Sjedi na ivicu klupe, ispruži jednu nogu i tu gdje je peta spusti stopalo. To je mjesto prednje noge.","Ustani i stavi gornji dio zadnjeg stopala na klupu.","Bučice su uz tijelo, trup blago nagnut naprijed."],
+  steps:["Spuštaj se savijanjem prednjeg koljena, koje prati pravac prstiju.","Idi dok zadnje koljeno ne dođe tik iznad poda.","Odgurni se cijelim prednjim stopalom i ustani bez odbijanja zadnjom nogom.","Uradi sva ponavljanja na jednoj nozi, pa promijeni. Počni slabijom nogom."],
+  tempo:"Spuštanje 2–3 sekunde, ustajanje za sekundu. Udah dolje, izdah gore.",
+  feel:"Butina i zadnjica prednje noge. Zadnja noga samo drži ravnotežu.",
+  errs:[["Prednje stopalo je preblizu klupi, pa se peta odiže.","Pomjeri ga pola stopala naprijed."],["Gubljenje ravnoteže.","Stani malo šire, kao na šinama, a ne na konopcu. Prve nedjelje radi bez tegova."],["Odgurivanje zadnjom nogom.","Zadnje stopalo samo leži na klupi, bez pritiska."]],
+  alt:"Iskorak unazad s bučicama."},
+ {id:"hyper",name:"Hiperekstenzija 45°",eng:"Back extension",sets:3,lo:10,hi:12,rest:90,step:2.5,m:"gluteus, zadnja loža, donja leđa",q:"45 degree back extension glute focus form",
+  key:"Savijaš se u kuku, dižeš se zadnjicom, staneš u ravnoj liniji.",
+  setup:["Podesi jastuk tako da mu je gornja ivica ispod pregiba kukova, da se slobodno savijaš.","Stopala su na platformi, pete oslonjene na valjke, prsti blago ka spolja.","Ruke prekrsti na grudima. Bez tega upisuješ 0 kg."],
+  steps:["Spuštaj trup savijanjem u kukovima, s ravnim ili blago zaobljenim gornjim dijelom leđa.","Idi dok ne osjetiš istezanje zadnje lože.","Podigni se stezanjem zadnjice i guranjem kukova u jastuk.","Stani kad je tijelo u ravnoj liniji i zadrži sekundu."],
+  tempo:"Spuštanje 2 sekunde, podizanje za sekundu, pauza na vrhu. Izdah pri podizanju.",
+  feel:"Zadnjica i zadnja loža. Donja leđa rade umjereno.",
+  errs:[["Prebacivanje preko ravne linije i izvijanje leđa.","Završi kad su ramena, kukovi i gležnjevi poravnati."],["Jastuk je previsoko, pa se savija kičma umjesto kukova.","Spusti jastuk ispod pregiba kukova."]],
+  alt:"Kad 12 ponavljanja postane lako, drži teg na grudima i upiši njegovu težinu."},
+ {id:"legext",name:"Opružanje nogu",eng:"Leg extension",sets:2,lo:12,hi:15,rest:75,step:2.5,m:"kvadriceps",q:"leg extension proper form",
+  key:"Ispruži do kraja, stisni, spuštaj polako.",
+  setup:["Naslon podesi tako da je koljeno u liniji s osovinom mašine, a cijela butina na sjedištu.","Jastuk je na donjem dijelu potkoljenice, tik iznad stopala.","Uhvati ručke i privuci se u sjedište."],
+  steps:["Ispruži noge do kraja, bez odizanja zadnjice.","Stisni butine sekundu na vrhu.","Spuštaj polako do ugla od oko 90° u koljenu, bez spuštanja tegova na gomilu."],
+  tempo:"Podizanje za sekundu, pauza sekundu, spuštanje 2–3 sekunde.",
+  feel:"Prednja strana butine, iznad koljena.",
+  errs:[["Trzanje i odizanje sa sjedišta.","Smanji težinu i drži se čvrsto za ručke."],["Nepotpuno ispružanje.","Ako ne možeš da zadržiš na vrhu, težina je prevelika."]],
+  alt:"Goblet čučanj s petama na povišenju."},
+ {id:"abd",name:"Abdukcija kukova na mašini",eng:"Hip abduction",sets:2,lo:15,hi:20,rest:60,step:2.5,m:"srednji gluteus",q:"hip abduction machine proper form",
+  key:"Širi koljenima, zadrži na kraju, vraćaj sporo.",
+  setup:["Sjedi s leđima na naslonu, jastuci su sa spoljne strane koljena.","Stopala su na osloncima. Za jači osjećaj u zadnjici blago se nagni naprijed, s ravnim leđima."],
+  steps:["Raširi koljena što više možeš.","Zadrži sekundu u najširem položaju.","Vraćaj polako i stani prije nego što se tegovi spuste."],
+  tempo:"Širenje za sekundu, pauza sekundu, vraćanje 2 sekunde.",
+  feel:"Gornji spoljni dio zadnjice.",
+  errs:[["Kratak, brz pokret s velikom težinom.","Smanji težinu i radi pun raspon s pauzom."],["Odgurivanje leđima od naslona.","Trup miruje, rade samo kukovi."]],
+  alt:"Hodanje u stranu s gumom oko koljena."},
+ {id:"legraise",name:"Podizanje nogu ležeći",eng:"Lying leg raise",sets:3,lo:10,hi:15,rest:60,noKg:true,m:"trbušnjaci",q:"lying leg raise proper form",
+  key:"Donja leđa su zalijepljena za pod cijelo vrijeme.",
+  setup:["Lezi na leđa, ruke uz tijelo ili dlanovi ispod zadnjice.","Pritisni donja leđa uz pod podvlačenjem karlice. Noge su ispružene ili blago savijene."],
+  steps:["Podigni noge do vertikale bez zamaha.","Na vrhu blago odigni karlicu od poda.","Spuštaj polako i stani prije nego što se leđa odvoje od poda. Pete ne dodiruju pod između ponavljanja."],
+  tempo:"Podizanje za sekundu, spuštanje 3 sekunde. Izdah pri podizanju.",
+  feel:"Donji dio stomaka. Ako osjećaš leđa, skrati pokret.",
+  errs:[["Leđa se izvijaju pri spuštanju.","Savij koljena ili spuštaj noge samo do pola."],["Zamah nogama.","Uspori spuštanje. Ono je glavni dio vježbe."]],
+  alt:"Privlačenje koljena ka grudima, pa postepeno ispružaj noge."}
 ]},
 {id:"gornjiB",short:"Gornji B",dow:"Pet",title:"Gornji dio B",focus:"Povlačenja za leđa i držanje, uz potiske iz drugog ugla.",ex:[
- {id:"dbrow",name:"Veslanje bučicom jednom rukom",eng:"One-arm dumbbell row",sets:3,lo:8,hi:10,rest:90,step:1,per:"po ruci",m:"leđa, biceps",
-  cues:["Ruka i koljeno iste strane su na klupi, leđa ravna i paralelna s podom.","Povuci bučicu ka kuku, lakat ide uz tijelo.","Na vrhu skupi lopaticu, pa spuštaj do potpuno ispružene ruke."],
-  err:"Rotiranje trupa da bi se podigla težina.",alt:"Veslanje na mašini s osloncem za grudi.",q:"one arm dumbbell row proper form"},
- {id:"incline",name:"Potisak na kosoj klupi bučicama",eng:"Incline dumbbell press",sets:3,lo:8,hi:10,rest:120,step:1,m:"gornji dio grudi, ramena",
-  cues:["Klupa pod uglom od oko 30°, lopatice skupljene.","Bučice spuštaj do gornjeg dijela grudi, laktovi pod oko 45°.","Potisni gore dok se ruke ne ispruže."],
-  err:"Prestrm naslon, pa ramena rade umjesto grudi.",alt:"Potisak na kosoj mašini.",q:"incline dumbbell press proper form"},
- {id:"pullup",name:"Zgibovi uz pomoć",eng:"Assisted pull-up",sets:3,lo:6,hi:10,rest:120,step:5,assist:true,m:"leđa, biceps",
-  cues:["Koristi mašinu za pomoć ili gumu. U polje za kg upiši koliko pomoći koristiš.","Kreni iz potpuno ispruženih ruku, prvo spusti lopatice.","Povuci se dok brada ne pređe šipku, laktovi idu ka rebrima.","Spuštaj se polako, oko dvije sekunde."],
-  err:"Polovična ponavljanja bez potpunog spuštanja.",alt:"Lat povlačenje uskim hvatom.",q:"assisted pull up machine proper form"},
- {id:"pushup",name:"Sklekovi",eng:"Push-up",sets:3,lo:6,hi:15,rest:90,noKg:true,m:"grudi, triceps, trup",
-  cues:["Dlanovi malo šire od ramena, tijelo ravno kao u planku.","Spuštaj se dok grudi ne dođu skoro do poda, laktovi pod oko 45°.","Odgurni se bez propadanja kukova."],
-  err:"Kukovi propadaju ili glava ide naprijed.",alt:"Ruke na klupi ili šipki u visini kukova. Niže povišenje znači teže.",q:"push up proper form for beginners incline push up"},
- {id:"facepull",name:"Face pull na sajli",eng:"Face pull",sets:3,lo:12,hi:15,rest:60,step:2.5,m:"zadnje rame, gornja leđa",
-  cues:["Konopac je u visini lica, hvat s palčevima ka sebi.","Povuci ka licu i razdvoji ruke, laktovi visoko.","Na kraju rotiraj šake unazad, zadrži sekundu."],
-  err:"Prevelika težina i naginjanje unazad.",alt:"Razvlačenje gume ili obrnuta odručenja s bučicama.",q:"face pull proper form"},
- {id:"hammer",name:"Čekić pregib",eng:"Hammer curl",sets:2,lo:10,hi:12,rest:60,step:1,m:"biceps, podlaktica",
-  cues:["Dlanovi gledaju jedan ka drugom cijelim pokretom.","Savij ruke bez pomjeranja laktova.","Spuštaj polako."],
-  err:"Zamah trupom.",alt:"Čekić pregib s konopcem na sajli.",q:"hammer curl proper form"},
- {id:"ohtri",name:"Triceps opružanje iznad glave",eng:"Overhead triceps extension",sets:2,lo:10,hi:12,rest:60,step:1,m:"triceps",
-  cues:["Jedna bučica s obje ruke ili konopac na sajli, laktovi gledaju naprijed.","Spusti teret iza glave dok ne osjetiš istezanje.","Ispruži ruke bez širenja laktova."],
-  err:"Laktovi se šire u stranu.",alt:"Triceps potisak na sajli.",q:"overhead triceps extension proper form"}
+ {id:"dbrow",name:"Veslanje bučicom jednom rukom",eng:"One-arm dumbbell row",sets:3,lo:8,hi:10,rest:90,step:1,per:"po ruci",m:"leđa, biceps",q:"one arm dumbbell row proper form",
+  key:"Leđa ravna kao sto, lakat ide ka kuku.",
+  setup:["Koljeno i šaka iste strane su na klupi, druga noga je na podu, malo u stranu.","Leđa su ravna i skoro paralelna s podom, vrat u produžetku kičme.","Bučica visi ispod ramena na ispruženoj ruci."],
+  steps:["Povuci bučicu ka kuku. Lakat ide unazad uz tijelo, ne u stranu.","Na vrhu skupi lopaticu ka kičmi i zadrži trenutak.","Spuštaj polako dok se ruka potpuno ne ispruži i leđa ne istegnu."],
+  tempo:"Povlačenje za sekundu, spuštanje 2 sekunde. Izdah pri povlačenju.",
+  feel:"Bočna strana leđa i prostor oko lopatice.",
+  errs:[["Trup se rotira da bi bučica otišla više.","Ramena ostaju paralelna s podom. Smanji težinu."],["Vučenje bučice ka grudima.","Putanja je luk ka kuku, kao da pališ kosilicu."]],
+  alt:"Veslanje na mašini s osloncem za grudi."},
+ {id:"incline",name:"Potisak na kosoj klupi bučicama",eng:"Incline dumbbell press",sets:3,lo:8,hi:10,rest:120,step:1,m:"gornji dio grudi, ramena",q:"incline dumbbell press proper form",
+  key:"Blag nagib klupe, lopatice skupljene, laktovi pod 45°.",
+  setup:["Klupu postavi na oko 30°, a sjedište podigni jedan zarez da ne klizaš.","Bučice dovedi koljenima do ramena, skupi i spusti lopatice, grudi podigni.","Stopala su čvrsto na podu."],
+  steps:["Potisni bučice iznad gornjeg dijela grudi dok se ruke ne ispruže.","Spuštaj polako ka spoljnoj strani gornjeg dijela grudi, laktovi pod oko 45°.","U dnu su podlaktice uspravne i osjećaš istezanje grudi.","Potisni nazad gore i blago ka sredini."],
+  tempo:"Spuštanje 2–3 sekunde, potisak za sekundu. Izdah pri potisku.",
+  feel:"Gornji dio grudi, ispod ključne kosti, uz prednje rame.",
+  errs:[["Klupa je prestrma, pa rade samo ramena.","Spusti naslon na 30°, najviše 45°."],["Bučice idu ka licu.","Putanja završava iznad ključne kosti."]],
+  alt:"Potisak na kosoj mašini."},
+ {id:"pullup",name:"Zgibovi uz pomoć",eng:"Assisted pull-up",sets:3,lo:6,hi:10,rest:120,step:5,assist:true,m:"leđa, biceps",q:"assisted pull up machine proper form",
+  key:"Kreni iz visa, prvo ramena dolje, pa grudi ka šipki.",
+  setup:["Na mašini izaberi kontrateg. Veći broj znači više pomoći, pa u aplikaciju upisuješ kg pomoći.","Uhvati ručke nathvatom, malo šire od ramena.","Klekni ili stani na platformu i spusti se u vis s ispruženim rukama."],
+  steps:["Spusti ramena od ušiju i stegni stomak.","Povuci se nagore vodeći laktove ka rebrima, grudi idu ka šipki.","Idi dok brada ne pređe šipku.","Spuštaj se polako do potpuno ispruženih ruku."],
+  tempo:"Povlačenje za sekundu, spuštanje 2–3 sekunde. Izdah pri povlačenju.",
+  feel:"Bočna strana leđa i biceps.",
+  errs:[["Polovična ponavljanja bez potpunog spuštanja.","Povećaj pomoć i radi pun raspon."],["Brada se isteže ka šipki, a ramena su kod ušiju.","Vodi grudima i drži ramena nisko."]],
+  alt:"Zgibovi s gumom ili lat povlačenje uskim hvatom. Napredak je manje pomoći."},
+ {id:"pushup",name:"Sklekovi",eng:"Push-up",sets:3,lo:6,hi:15,rest:90,noKg:true,m:"grudi, triceps, trup",q:"push up proper form for beginners incline push up",
+  key:"Tijelo je daska koja se spušta i diže kao jedan komad.",
+  setup:["Dlanovi su malo šire od ramena, prsti naprijed, ramena iznad šaka.","Noge ispruži, stegni zadnjicu i stomak kao u planku.","Ako ne možeš 6 ponavljanja s poda, stavi ruke na klupu ili šipku u visini kukova."],
+  steps:["Spuštaj se savijanjem laktova pod oko 45° u odnosu na trup.","Idi dok grudi ne dođu par centimetara od podloge. Kukovi i grudi se spuštaju zajedno.","Odgurni se dok se ruke ne ispruže i na vrhu gurni pod od sebe."],
+  tempo:"Spuštanje 2 sekunde, guranje za sekundu. Udah dolje, izdah gore.",
+  feel:"Grudi, triceps i stomak.",
+  errs:[["Kukovi propadaju ili zadnjica ide gore.","Stegni zadnjicu. Ako ne ide, podigni ruke na više povišenje."],["Laktovi su rašireni u stranu.","Privuci ih bliže tijelu."],["Glava ide naprijed umjesto grudi.","Gledaj u pod malo ispred šaka i vodi grudima."]],
+  alt:"Ruke na povišenju. Što je niže, to je teže. Sklekovi na koljenima su druga opcija."},
+ {id:"facepull",name:"Face pull na sajli",eng:"Face pull",sets:3,lo:12,hi:15,rest:60,step:2.5,m:"zadnje rame, gornja leđa",q:"face pull proper form",
+  key:"Vuci ka čelu, laktovi visoko, šake se razdvajaju.",
+  setup:["Konopac postavi u visini lica ili malo iznad.","Uhvati krajeve tako da palčevi gledaju ka tebi.","Korakni unazad dok se ruke ne ispruže, stani stabilno, jednom nogom malo naprijed."],
+  steps:["Povuci konopac ka čelu i razdvajaj krajeve.","Laktovi ostaju u visini ramena ili iznad.","Na kraju rotiraj šake unazad, kao da pokazuješ bicepse, i zadrži sekundu.","Vraćaj polako do ispruženih ruku."],
+  tempo:"Povlačenje za sekundu, pauza sekundu, vraćanje 2 sekunde.",
+  feel:"Zadnja strana ramena i prostor između lopatica.",
+  errs:[["Prevelika težina, pa se trup naginje unazad.","Smanji težinu. Ovo je vježba kontrole."],["Laktovi padaju nisko, pa pokret postaje veslanje.","Drži laktove visoko i vuci ka čelu, ne ka grudima."]],
+  alt:"Razvlačenje gume ispred grudi ili obrnuta odručenja s bučicama."},
+ {id:"hammer",name:"Čekić pregib",eng:"Hammer curl",sets:2,lo:10,hi:12,rest:60,step:1,m:"biceps, podlaktica",q:"hammer curl proper form",
+  key:"Dlanovi gledaju jedan ka drugom, laktovi miruju.",
+  setup:["Stani uspravno, bučice uz tijelo, dlanovi okrenuti ka butinama.","Laktovi su uz rebra, ramena spuštena."],
+  steps:["Savij ruke i podigni bučice do ramena, bez okretanja šaka.","Zadrži trenutak na vrhu.","Spuštaj polako do potpuno ispruženih ruku."],
+  tempo:"Podizanje za sekundu, spuštanje 2–3 sekunde.",
+  feel:"Spoljna strana nadlaktice i gornji dio podlaktice.",
+  errs:[["Zamah trupom.","Nasloni leđa na zid ili smanji težinu."],["Laktovi idu naprijed.","Drži ih prikovane uz rebra."]],
+  alt:"Čekić pregib s konopcem na donjoj sajli."},
+ {id:"ohtri",name:"Triceps opružanje iznad glave",eng:"Overhead triceps extension",sets:2,lo:10,hi:12,rest:60,step:1,m:"triceps",q:"overhead triceps extension proper form",
+  key:"Nadlaktice miruju uz glavu, duboko istezanje dolje.",
+  setup:["Sjedi ili stani i uhvati jednu bučicu s obje ruke za gornji teg. Na sajli uhvati konopac i okreni se leđima mašini.","Podigni teret iznad glave, laktovi gledaju naprijed.","Rebra drži dolje, stomak stegnut."],
+  steps:["Spuštaj teret iza glave savijanjem laktova, dok ne osjetiš istezanje tricepsa.","Nadlaktice ostaju uz glavu i ne pomjeraju se.","Ispruži ruke do kraja i stisni triceps."],
+  tempo:"Spuštanje 2–3 sekunde, opružanje za sekundu. Izdah pri opružanju.",
+  feel:"Zadnja strana nadlaktice, posebno uz lakat i pazuh.",
+  errs:[["Laktovi se šire u stranu.","Privuci ih ka ušima i uzmi lakši teret."],["Izvijanje leđa.","Radi sjedeći uz naslon i stegni stomak."]],
+  alt:"Triceps potisak na sajli."}
 ]}];
+/* technique videos, verified to exist and allow embedding: exercise id -> [YouTube id, channel, start seconds] */
+var VID={squat:["N3QtbxeNqmg","Alexander Bromley",86],rdl:["_oyxCn2iSjU","Jeff Nippard",82],legpress:["K5n2vg3oZa4","Colossus Fitness",0],legcurl:["Wy1SwoY2aaQ","Colossus Fitness",0],calf:["SVtg-1loH4c","Colossus Fitness",0],plank:["A2b2EmIg0dA","E3 Rehab",0],
+ dbbench:["cZalRJCaw20","Colossus Fitness",0],latpd:["CAwf7n6Luuc","ScottHermanFitness",0],ohp:["GFblCmuEE18","ScottHermanFitness",0],cablerow:["xQNrFHEMhI4","Bodybuilding.com",0],latraise:["Y29xKcze8Ik","Physique Development",0],pushdown:["_w-HpW70nSQ","ScottHermanFitness",0],curl:["XE_pHwbst04","Fit Father Project",0],
+ hipthrust:["Zp26q4BY5HE","Girls Gone Strong",0],bss:["SkNsa3eBwLA","Max Euceda",0],hyper:["WJm88qItjeE","Colossus Fitness",0],legext:["ljO4jkwv8wQ","Jeff Nippard",209],abd:["OjI5OpV6IWA","Colossus Fitness",0],legraise:["3oIpxsn6FxQ","Mobility Doc",0],
+ dbrow:["roCP6wCXPqo","Men's Health",0],incline:["hChjZQhX1Ls","ScottHermanFitness",0],pullup:["gx0RWT7WbmA","Colossus Fitness",0],pushup:["p2WoC3Vbltc","Girls Gone Strong",0],facepull:["3pToT5_DUiY","Colossus Fitness",0],hammer:["BRVDS6HVR9Q","Buff Dudes Workouts",0],ohtri:["57fWTQID-1Y","Colossus Fitness",0]};
 var EX={};DAYS.forEach(function(d){d.ex.forEach(function(e){EX[e.id]=e;});});
 
 /* ---------- storage (this phone's browser) ---------- */
@@ -413,6 +576,191 @@ function hintFor(ex){
   return txt;
 }
 
+/* ---------- animated mannequin: a jointed side/front-view figure posed with two-bone IK, looping between two poses ---------- */
+var FIGS={
+ squat:{a:{hip:[96,77],t:4,foot:[100,145],hand:[96,38]},b:{hip:[78,116],t:38,foot:[100,145],hand:[103,86]},
+  props:[["plate","sh",-5,1,12]],tm:[2.4,.3,1.2,.5],cap:["Spuštaj se 2–3 s","Ustani snažno"]},
+ rdl:{a:{hip:[96,77],t:3,foot:[98,145],hand:[102,80]},b:{hip:[78,84],t:66,foot:[98,145],hand:[106,112]},
+  props:[["plate","hand",0,0,12]],tm:[2.8,.4,1.2,.5],cap:["Kukovi unazad, 3 s","Kukovi naprijed"]},
+ legpress:{a:{hip:[76,124],t:-40,foot:[126,82],toe:[-7,-9],hand:[84,130]},b:{hip:[76,124],t:-40,foot:[104,99],toe:[-7,-9],hand:[84,130]},
+  props:[["seg",38,92,72,134,7],["seg",72,134,94,130,7],["segj","foot",-9,-17,13,10,5],["plate","foot",12,-12,9]],tm:[2.4,.3,1.2,.4],cap:["Spuštaj 2–3 s","Guraj petama"]},
+ legcurl:{a:{hip:[76,105],t:-8,foot:[143,110],toe:[10,-6],hand:[88,113]},b:{hip:[76,105],t:-8,foot:[104,138],toe:[11,4],hand:[88,113]},
+  props:[["rect",64,110,50,7],["seg",66,110,59,62,6],["rect",96,91,18,6],["pad","foot",-1,6,6]],tm:[1.1,.6,2.4,.3],cap:["Privuci pete, zadrži","Vraćaj 2–3 s"]},
+ calf:{a:{hip:[95,77.5],t:2,foot:[94,146],toe:[13,3],hand:[99,81]},b:{hip:[95,68.5],t:2,foot:[94,137],toe:[13,12],hand:[99,72]},
+  props:[["rect",98,149,28,9],["db","hand"]],tm:[1,.8,2,.8],cap:["Na prste, zadrži","Spuštaj petu polako"]},
+ plank:{a:{hip:[95,124],t:86,foot:[27,141],toe:[3,8],hand:[161,146]},b:{hip:[95,122.5],t:86,foot:[27,141],toe:[3,8],hand:[161,146]},eDir:-1,
+  props:[],tm:[1.6,0,1.6,0],cap:["Drži liniju, diši","Drži liniju, diši"]},
+ dbbench:{a:{hip:[122,108],t:-90,foot:[150,145],hand:[78,61]},b:{hip:[122,108],t:-90,foot:[150,145],hand:[80,93]},eDir:-1,
+  props:[["rect",52,113,84,6],["seg",62,119,62,150,4],["seg",126,119,126,150,4],["db","hand"]],tm:[2.4,.3,1.1,.4],cap:["Spuštaj 2–3 s","Potisni gore"]},
+ latpd:{a:{hip:[92,112],t:-6,foot:[124,145],hand:[92,21]},b:{hip:[92,112],t:-14,foot:[124,145],hand:[93,70]},
+  props:[["rect",78,117,30,6],["seg",93,123,93,150,4],["rect",104,99,16,6],["cable",92,-24,"hand"],["dot","hand",3.5]],tm:[1.1,.5,2.4,.3],cap:["Povuci do grudi","Vraćaj 2–3 s"]},
+ ohp:{a:{hip:[90,112],t:-4,foot:[122,145],hand:[94,54]},b:{hip:[90,112],t:-4,foot:[122,145],hand:[88,21]},
+  props:[["rect",76,117,30,6],["seg",78,117,74,62,6],["seg",91,123,91,150,4],["db","hand"]],tm:[1.1,.3,2.2,.4],cap:["Potisni gore","Spuštaj 2 s"]},
+ cablerow:{a:{hip:[80,118],t:10,foot:[142,124],toe:[3,-12],hand:[133,92]},b:{hip:[80,118],t:-6,foot:[142,124],toe:[3,-12],hand:[96,98]},
+  props:[["rect",62,124,40,6],["seg",82,130,82,150,4],["seg",147,106,151,134,5],["cable",178,96,"hand"],["dot","hand",3.5]],tm:[1.1,.6,2.2,.3],cap:["Povuci do stomaka","Vraćaj 2 s"]},
+ latraise:{view:"front",arcHand:true,a:{hip:[100,77],hand:[19,80],foot:[9,145]},b:{hip:[100,77],hand:[59,36],foot:[9,145]},
+  props:[["db","hand"]],tm:[1.1,.3,2.4,.3],cap:["Podigni do ramena","Spuštaj 2–3 s"]},
+ pushdown:{a:{hip:[90,77],t:10,foot:[92,145],hand:[116,52]},b:{hip:[90,77],t:10,foot:[92,145],hand:[106,80]},
+  props:[["cable",122,-24,"hand"],["dot","hand",3.5]],tm:[1.1,.5,2.2,.3],cap:["Potisni dolje","Vraćaj 2 s"]},
+ curl:{a:{hip:[96,77],t:0,foot:[96,145],hand:[99,80]},b:{hip:[96,77],t:0,foot:[96,145],hand:[110,46]},
+  props:[["db","hand"]],tm:[1.1,.5,2.4,.3],cap:["Savij ruke","Spuštaj 2–3 s"]},
+ hipthrust:{a:{hip:[97,127],t:-53,foot:[138,145],hand:[99,119]},b:{hip:[104,102],t:-87,foot:[138,145],hand:[106,94]},
+  props:[["rect",30,104,32,46],["plate","hip",1,-9,12]],tm:[1.1,.7,2.2,.3],cap:["Kukovi gore, stisni","Spuštaj 2 s"]},
+ bss:{a:{hip:[92,80],t:8,foot:[112,145],foot2:[60,108],toe2:[-11,1],hand:[96,84]},b:{hip:[90,108],t:16,foot:[112,145],foot2:[60,108],toe2:[-11,1],hand:[101,112]},kDir2:1,
+  props:[["rect",30,112,32,38],["db","hand"]],tm:[2.4,.3,1.2,.4],cap:["Spuštaj se 2–3 s","Ustani prednjom nogom"]},
+ hyper:{a:{hip:[101,88],t:45,foot:[52,138],toe:[9,8],hand:[127,68]},b:{hip:[101,88],t:118,foot:[52,138],toe:[9,8],hand:[131,104]},
+  props:[["seg",50,148,112,102,5],["seg",100,110,114,96,9],["seg",112,102,112,150,5],["seg",42,148,62,148,5]],tm:[2.2,.3,1.1,.6],cap:["Spuštaj 2 s","Podigni se zadnjicom"]},
+ legext:{a:{hip:[76,105],t:-10,foot:[114,138],toe:[11,3],hand:[88,113]},b:{hip:[76,105],t:-10,foot:[145,104],toe:[4,-11],hand:[88,113]},
+  props:[["rect",64,110,50,7],["seg",66,110,58,62,6],["pad","foot",5,-3,6]],tm:[1.1,.6,2.4,.3],cap:["Ispruži, stisni","Spuštaj 2–3 s"]},
+ abd:{view:"front",len:{th:15},a:{hip:[100,108],hand:[20,112],foot:[9,148]},b:{hip:[100,108],hand:[20,112],foot:[37,143]},
+  props:[["rect",86,58,28,56],["rect",76,113,48,7],["pad","kn",7,0,5]],tm:[1.1,.6,2.2,.3],cap:["Raširi, zadrži","Vraćaj 2 s"]},
+ legraise:{arcFoot:true,a:{hip:[110,140],t:-90,foot:[177,134],toe:[9,-8],hand:[112,144]},b:{hip:[110,140],t:-90,foot:[114,71],toe:[5,-11],hand:[112,144]},
+  props:[],tm:[1.2,.3,3,.2],cap:["Podigni noge","Spuštaj 3 s"]},
+ dbrow:{a:{hip:[72,90],t:88,foot:[50,145],foot2:[40,121],toe2:[-10,2],hand:[116,134],hand2:[120,123]},b:{hip:[72,90],t:88,foot:[50,145],foot2:[40,121],toe2:[-10,2],hand:[108,104],hand2:[120,123]},kDir2:-1,
+  props:[["rect",34,124,100,6],["seg",44,130,44,150,4],["seg",124,130,124,150,4],["db","hand"]],tm:[1.1,.5,2.2,.3],cap:["Povuci ka kuku","Spuštaj 2 s"]},
+ incline:{a:{hip:[112,116],t:-60,foot:[144,145],hand:[73,47]},b:{hip:[112,116],t:-60,foot:[144,145],hand:[78,80]},eDir:-1,
+  props:[["seg",116,123,62,92,6],["rect",112,121,26,6],["seg",120,127,120,150,4],["seg",70,100,70,150,4],["db","hand"]],tm:[2.4,.3,1.1,.4],cap:["Spuštaj 2–3 s","Potisni gore"]},
+ pullup:{a:{hip:[98,80],t:2,foot:[74,112],toe:[-10,3],hand:[100,-12]},b:{hip:[98,50],t:2,foot:[74,82],toe:[-10,3],hand:[100,-12]},
+  props:[["seg",100,-14,126,-14,4],["seg",126,-14,126,150,4],["dot","hand",3.5],["segj","kn",-9,7,11,7,6]],tm:[1.2,.4,2.4,.4],cap:["Povuci se gore","Spuštaj se 2–3 s"]},
+ pushup:{a:{hip:[92,112],t:80,foot:[28,139],toe:[3,9],hand:[138,147]},b:{hip:[92,129],t:88,foot:[28,141],toe:[3,8],hand:[138,147]},
+  props:[],tm:[2.2,.3,1.1,.4],cap:["Spuštaj se 2 s","Odgurni se"]},
+ facepull:{a:{hip:[84,77],t:-4,foot:[86,145],hand:[126,34]},b:{hip:[84,77],t:-4,foot:[86,145],hand:[94,22]},
+  props:[["cable",180,26,"hand"],["dot","hand",3.5]],tm:[1.1,.6,2.2,.3],cap:["Povuci ka čelu","Vraćaj 2 s"]},
+ hammer:{a:{hip:[96,77],t:0,foot:[96,145],hand:[99,80]},b:{hip:[96,77],t:0,foot:[96,145],hand:[111,48]},
+  props:[["db","hand"]],tm:[1.1,.4,2.4,.3],cap:["Savij ruke","Spuštaj 2–3 s"]},
+ ohtri:{a:{hip:[96,77],t:0,foot:[96,145],hand:[98,-14]},b:{hip:[96,77],t:0,foot:[96,145],hand:[84,24]},eDir:-1,
+  props:[["db","hand"]],tm:[2.2,.3,1.1,.4],cap:["Spuštaj iza glave","Ispruži ruke"]}
+};
+var FIG=(function(){
+  var BASE={th:36,sh:34,to:44,ua:25,fa:23};
+  function ik(a,b,l1,l2,dir){
+    var dx=b[0]-a[0],dy=b[1]-a[1],d=Math.sqrt(dx*dx+dy*dy)||.01,mx=l1+l2-.4,mn=Math.abs(l1-l2)+.4,dd=Math.max(mn,Math.min(mx,d));
+    var base=Math.atan2(dy,dx),a1=Math.acos(Math.max(-1,Math.min(1,(l1*l1+dd*dd-l2*l2)/(2*l1*dd)))),g=base+dir*a1;
+    return {mid:[a[0]+l1*Math.cos(g),a[1]+l1*Math.sin(g)],end:dd===d?b:[a[0]+dd*Math.cos(base),a[1]+dd*Math.sin(base)]};
+  }
+  function mix(p,q,k){return q==null?p:(p==null?q:[p[0]+(q[0]-p[0])*k,p[1]+(q[1]-p[1])*k]);}
+  function arc(p,q,k,c){var a0=Math.atan2(p[1]-c[1],p[0]-c[0]),a1=Math.atan2(q[1]-c[1],q[0]-c[0]),r0=Math.sqrt(Math.pow(p[0]-c[0],2)+Math.pow(p[1]-c[1],2)),r1=Math.sqrt(Math.pow(q[0]-c[0],2)+Math.pow(q[1]-c[1],2)),d=a1-a0;if(d>Math.PI)d-=2*Math.PI;if(d<-Math.PI)d+=2*Math.PI;var a=a0+d*k,r=r0+(r1-r0)*k;return [c[0]+r*Math.cos(a),c[1]+r*Math.sin(a)];}
+  function f(n){return Math.round(n*10)/10;}
+  function ln(p,q,w,c){return '<line x1="'+f(p[0])+'" y1="'+f(p[1])+'" x2="'+f(q[0])+'" y2="'+f(q[1])+'" stroke="var(--'+c+')" stroke-width="'+w+'" stroke-linecap="round"/>';}
+  function dot(p,r,c,extra){return '<circle cx="'+f(p[0])+'" cy="'+f(p[1])+'" r="'+r+'" fill="var(--'+c+')"'+(extra||"")+'/>';}
+  function limb(a,m,e,w1,w2,c){return ln(a,m,w1,c)+ln(m,e,w2,c)+dot(m,Math.min(w1,w2)*.32,"fig-joint");}
+  /* joints for one side of the body */
+  function side(sp,k,far,L){
+    var A=sp.a,B=sp.b,sfx=far?"2":"";
+    var hand=mix(A["hand"+sfx]||(far?A.hand:null),B["hand"+sfx]||(far?B.hand:null),k),foot=mix(A["foot"+sfx]||(far?A.foot:null),B["foot"+sfx]||(far?B.foot:null),k);
+    var toe=mix(A["toe"+sfx]||(far?A.toe:null)||[12,4],B["toe"+sfx]||(far?B.toe:null)||[12,4],k);
+    if(sp.arcFoot&&A.foot&&B.foot)foot=arc(A["foot"+sfx]||A.foot,B["foot"+sfx]||B.foot,k,sp.view==="front"?[7,0]:mix(A.hip,B.hip,k));
+    if(sp.arcHand&&A.hand&&B.hand)hand=arc(A.hand,B.hand,k,sp.view==="front"?[13,A.hip[1]-L.to+2]:[0,0]);
+    return {hand:hand,foot:foot,toe:toe,eDir:(far&&sp.eDir2!=null)?sp.eDir2:(sp.eDir==null?1:sp.eDir),kDir:(far&&sp.kDir2!=null)?sp.kDir2:(sp.kDir==null?-1:sp.kDir)};
+  }
+  function props(sp,J,layer){
+    var h="";(sp.props||[]).forEach(function(p){
+      var t=p[0],back=(t==="rect"||t==="seg"||t==="cable"||t==="segj"||t==="pad");
+      if(back!==(layer===0))return;
+      var js=J[p[1]]?(J.mirror&&J[p[1]+"M"]?[J[p[1]],J[p[1]+"M"]]:[J[p[1]]]):[];
+      if(t==="rect")h+='<rect x="'+p[1]+'" y="'+p[2]+'" width="'+p[3]+'" height="'+p[4]+'" rx="2.5" fill="var(--fig-gear)"/>';
+      else if(t==="seg")h+=ln([p[1],p[2]],[p[3],p[4]],p[5],"fig-gear");
+      else if(t==="cable"){var j=J[p[3]];h+='<line x1="'+p[1]+'" y1="'+p[2]+'" x2="'+f(j[0])+'" y2="'+f(j[1])+'" stroke="var(--fig-gear)" stroke-width="1.6"/>';}
+      else js.forEach(function(j,i){
+        var s=i?-1:1;
+        if(t==="segj")h+=ln([j[0]+p[2],j[1]+p[3]],[j[0]+p[4],j[1]+p[5]],p[6],"fig-gear");
+        else if(t==="pad")h+=dot([j[0]+s*p[2],j[1]+p[3]],p[4],"fig-gear");
+        else if(t==="plate"){var c=[j[0]+p[2],j[1]+p[3]];h+='<circle cx="'+f(c[0])+'" cy="'+f(c[1])+'" r="'+p[4]+'" fill="none" stroke="var(--accent)" stroke-width="4"/>'+dot(c,2.6,"accent");}
+        else if(t==="db")h+=dot(j,6,"accent")+dot(j,2.2,"fig-joint");
+        else if(t==="dot")h+=dot(j,p[2],"accent");
+      });
+    });return h;
+  }
+  /* inner SVG markup for exercise spec `sp` at blend k (0 = pose a, 1 = pose b) */
+  function draw(sp,k){
+    var L={},n;for(n in BASE)L[n]=(sp.len&&sp.len[n])||BASE[n];
+    var hip=mix(sp.a.hip,sp.b.hip,k),h="",J;
+    if(sp.view==="front"){
+      var sh=[hip[0],hip[1]-L.to],head=[hip[0],sh[1]-15],S=side(sp,k,false,L),parts=[];
+      J={hip:hip,sh:sh,mirror:true};
+      [1,-1].forEach(function(s){
+        var sj=[sh[0]+s*13,sh[1]+2],hj=[hip[0]+s*7,hip[1]];
+        var arm=ik(sj,[hip[0]+s*S.hand[0],S.hand[1]],L.ua,L.fa,s*(sp.eDir==null?1:sp.eDir)),leg=ik(hj,[hip[0]+s*S.foot[0],S.foot[1]],L.th,L.sh,-s*(sp.kDir==null?1:sp.kDir));
+        var key=s>0?"":"M";J["hand"+key]=arm.end;J["kn"+key]=leg.mid;J["foot"+key]=leg.end;
+        parts.push(limb(hj,leg.mid,leg.end,12,9,"fig")+ln(leg.end,[leg.end[0]+s*6,leg.end[1]+3],6,"fig")+limb(sj,arm.mid,arm.end,8,7,"fig")+dot(arm.end,3.6,"fig"));
+      });
+      h+=props(sp,J,0)+parts[0].replace(/^(.*?)(<line[^>]*stroke-width="8".*)$/,"$1")+parts[1].replace(/^(.*?)(<line[^>]*stroke-width="8".*)$/,"$1");
+      h+='<path d="M'+f(sh[0]-14)+" "+f(sh[1]+1)+" Q"+f(sh[0])+" "+f(sh[1]-5)+" "+f(sh[0]+14)+" "+f(sh[1]+1)+" L"+f(hip[0]+10)+" "+f(hip[1]+3)+" Q"+f(hip[0])+" "+f(hip[1]+8)+" "+f(hip[0]-10)+" "+f(hip[1]+3)+'Z" fill="var(--fig)" stroke="var(--fig)" stroke-width="5" stroke-linejoin="round"/>';
+      h+=ln(sh,[sh[0],sh[1]-6],6,"fig")+'<ellipse cx="'+f(head[0])+'" cy="'+f(head[1])+'" rx="7.5" ry="8.5" fill="var(--fig)"/>';
+      h+=parts[0].replace(/^(.*?)(<line[^>]*stroke-width="8".*)$/,"$2")+parts[1].replace(/^(.*?)(<line[^>]*stroke-width="8".*)$/,"$2");
+      return h+props(sp,J,1);
+    }
+    var t=(sp.a.t+(sp.b.t-sp.a.t)*k)*Math.PI/180,ux=Math.sin(t),uy=-Math.cos(t);
+    var sh2=[hip[0]+L.to*ux,hip[1]+L.to*uy],head2=[sh2[0]+15*ux,sh2[1]+15*uy];
+    var N=side(sp,k,false,L),F=side(sp,k,true,L);
+    var nl=ik(hip,N.foot,L.th,L.sh,N.kDir),fl=ik(hip,F.foot,L.th,L.sh,F.kDir),na=ik(sh2,N.hand,L.ua,L.fa,N.eDir),fa=ik(sh2,F.hand,L.ua,L.fa,F.eDir);
+    J={hip:hip,sh:sh2,hand:na.end,kn:nl.mid,foot:nl.end,el:na.mid};
+    h+=props(sp,J,0);
+    h+=limb(sh2,fa.mid,fa.end,8,7,"fig-far")+dot(fa.end,3.6,"fig-far");
+    h+=limb(hip,fl.mid,fl.end,12,9,"fig-far")+ln(fl.end,[fl.end[0]+F.toe[0],fl.end[1]+F.toe[1]],6,"fig-far");
+    h+=ln(hip,sh2,17,"fig")+ln(sh2,[sh2[0]+6*ux,sh2[1]+6*uy],7,"fig");
+    h+='<ellipse cx="'+f(head2[0])+'" cy="'+f(head2[1])+'" rx="7.5" ry="8.5" transform="rotate('+f(t*180/Math.PI)+" "+f(head2[0])+" "+f(head2[1])+')" fill="var(--fig)"/>';
+    h+=limb(hip,nl.mid,nl.end,12,9,"fig")+ln(nl.end,[nl.end[0]+N.toe[0],nl.end[1]+N.toe[1]],6,"fig")+dot(hip,3.6,"fig-joint");
+    h+=limb(sh2,na.mid,na.end,8,7,"fig")+dot(na.end,3.6,"fig")+dot(sh2,2.8,"fig-joint");
+    return h+props(sp,J,1);
+  }
+  function ease(x){return x<.5?2*x*x:1-Math.pow(-2*x+2,2)/2;}
+  /* blend and phase (0 = moving a→b, 1 = moving b→a) at time `sec` */
+  function at(sp,sec){
+    var m=sp.tm||[2.2,.4,1.1,.5],tot=m[0]+m[1]+m[2]+m[3],x=sec%tot;
+    if(x<m[0])return {k:ease(x/m[0]),ph:0};
+    if(x<m[0]+m[1])return {k:1,ph:0};
+    if(x<m[0]+m[1]+m[2])return {k:1-ease((x-m[0]-m[1])/m[2]),ph:1};
+    return {k:0,ph:1};
+  }
+  return {draw:draw,at:at};
+})();
+
+/* ---------- "how to" template: key cue, video, setup, execution, tempo, feel, mistakes, swap ---------- */
+var EMBED=!!document.querySelector('link[rel="manifest"]'); /* inline player only in the installed web app */
+function lis(a){return a.map(function(c){return "<li>"+esc(c)+"</li>";}).join("");}
+function blk(t,inner){return "<div><h3>"+t+"</h3>"+inner+"</div>";}
+function videoHtml(ex){
+  var v=VID[ex.id];
+  if(!v||!/^[\w-]{11}$/.test(v[0]))return '<a class="video" target="_blank" rel="noopener" href="https://www.youtube.com/results?search_query='+encodeURIComponent(ex.q)+'">▶ Potraži video tehnike</a>';
+  var t=+v[2]||0,url="https://www.youtube.com/watch?v="+v[0]+(t?"&t="+t+"s":"");
+  if(!EMBED)return '<div class="vid"><a class="video" target="_blank" rel="noopener" href="'+url+'">▶ Pogledaj video tehnike</a><div class="vidcap">Video: '+esc(v[1])+' (YouTube)</div></div>';
+  return '<div class="vid"><button type="button" class="vidbtn" data-yt="'+v[0]+'" data-t="'+t+'" aria-label="Pusti video tehnike: '+esc(ex.name)+'"><img loading="lazy" alt="" src="https://i.ytimg.com/vi/'+v[0]+'/hqdefault.jpg"><span class="play">▶</span></button>'+
+    '<div class="vidcap">Video: '+esc(v[1])+' · <a target="_blank" rel="noopener" href="'+url+'">otvori na YouTubeu</a></div></div>';
+}
+function howHtml(ex){
+  return '<details class="acc"><summary>Kako se radi<i class="chev"></i></summary><div class="acc-body"><div class="acc-in"><div class="how">'+
+    '<p class="keycue">'+esc(ex.key)+'</p>'+figHtml(ex)+
+    blk("Postavka","<ul>"+lis(ex.setup)+"</ul>")+
+    blk("Izvođenje","<ol>"+lis(ex.steps)+"</ol>")+
+    blk("Disanje i tempo","<p>"+esc(ex.tempo)+"</p>")+
+    blk("Gdje treba da osjetiš","<p>"+esc(ex.feel)+"</p>")+
+    blk("Česte greške i ispravka",'<dl class="errs">'+ex.errs.map(function(e){return "<dt>"+esc(e[0])+"</dt><dd>"+esc(e[1])+"</dd>";}).join("")+"</dl>")+
+    blk("Zamjena","<p>"+esc(ex.alt)+"</p>")+
+    blk("Video tehnike",videoHtml(ex))+
+    '</div></div></div></details>';
+}
+function figHtml(ex){
+  var sp=FIGS[ex.id];if(!sp)return "";
+  return '<div class="fig" data-fig="'+ex.id+'"><svg viewBox="0 -26 200 184" role="img" aria-label="Animacija vježbe: '+esc(ex.name)+'"><line x1="0" y1="151" x2="200" y2="151" stroke="var(--fig-gear)" stroke-width="1.5"/><g>'+FIG.draw(sp,0)+'</g></svg><div class="figcap"><span class="phase">'+esc(sp.cap[0])+'</span></div></div>';
+}
+/* one animation loop, alive only while some accordion is open */
+var figRaf=null;
+function figTick(ts){
+  var live=app.querySelectorAll(".acc.on .fig");
+  if(!live.length){figRaf=null;return;}
+  live.forEach(function(el){
+    var sp=FIGS[el.dataset.fig];if(!sp)return;
+    if(!el._t0)el._t0=ts;
+    var st=calm?{k:1,ph:0}:FIG.at(sp,(ts-el._t0)/1000);
+    el.querySelector("g").innerHTML=FIG.draw(sp,st.k);
+    var c=el.querySelector(".phase");if(c.textContent!==sp.cap[st.ph])c.textContent=sp.cap[st.ph];
+  });
+  figRaf=calm?null:requestAnimationFrame(figTick);
+}
+function figStart(){if(!figRaf)figRaf=requestAnimationFrame(figTick);}
+function stopVideos(root){root.querySelectorAll("iframe").forEach(function(f){if(f._btn)f.replaceWith(f._btn);else f.remove();});}
+
 /* ---------- views ---------- */
 function viewWorkout(){
   var dayId=state.day||nextDay(); var day=dayById(dayId);
@@ -436,9 +784,7 @@ function viewWorkout(){
       h+='<div class="field"><input id="'+idb+'-reps" type="text" inputmode="numeric" data-f="reps" value="'+esc(s.reps)+'" placeholder="'+esc(l.reps!=null?l.reps:ex.lo)+'"><label for="'+idb+'-reps">'+(ex.unit==="s"?"sek":"pon")+'</label></div>';
       h+='<button type="button" class="check" aria-pressed="'+s.done+'" aria-label="Serija '+(j+1)+' završena">✓</button></div>';
     });
-    h+='</div><details><summary>Kako se radi</summary><div class="how"><ol>'+ex.cues.map(function(c){return "<li>"+esc(c)+"</li>";}).join("")+'</ol>'+
-       '<div><span class="lbl">Česta greška</span>'+esc(ex.err)+'</div><div><span class="lbl">Zamjena</span>'+esc(ex.alt)+'</div>'+
-       '<a class="video" target="_blank" rel="noopener" href="https://www.youtube.com/results?search_query='+encodeURIComponent(ex.q)+'">▶ Pogledaj video tehnike</a></div></details></article>';
+    h+='</div>'+howHtml(ex)+'</article>';
   });
   h+='</div><button type="button" class="btn wide" id="finish">Završi trening</button>'+
      '<button type="button" class="btn ghost wide danger" id="clearDraft">Poništi današnji unos</button>'+
@@ -576,8 +922,24 @@ app.addEventListener("submit",function(e){
   if(v==null||v<30||v>200){toast("Upiši težinu u kilogramima, na primjer 53,4.");return;}
   state.bw.push({date:Date.now(),kg:v});save();viewProgress();toast("Težina sačuvana.");
 });
+/* accordion: animate open and close (details stays the semantic element) */
+app.addEventListener("click",function(e){
+  var sm=e.target.closest("summary");if(!sm)return;
+  var d=sm.parentNode;if(!d.classList.contains("acc"))return;
+  e.preventDefault();clearTimeout(d._t);
+  if(d.classList.contains("on")){
+    d.classList.remove("on");
+    d._t=setTimeout(function(){if(!d.classList.contains("on")){d.open=false;stopVideos(d);}},400);
+  }else{d.open=true;void d.offsetHeight;d.classList.add("on");d.querySelectorAll(".fig").forEach(function(el){el._t0=0;});figStart();}
+});
 app.addEventListener("click",function(e){
   var b=e.target.closest("button");if(!b)return;
+  if(b.classList.contains("vidbtn")){
+    var fr=document.createElement("iframe"),st=+b.dataset.t||0;
+    fr.src="https://www.youtube-nocookie.com/embed/"+b.dataset.yt+"?autoplay=1&playsinline=1&rel=0"+(st?"&start="+st:"");
+    fr.allow="autoplay; encrypted-media; picture-in-picture; fullscreen";fr.allowFullscreen=true;fr.title="Video tehnike";fr._btn=b;
+    b.replaceWith(fr);return;
+  }
   if(b.dataset.day){state.day=b.dataset.day;save();viewWorkout();return;}
   if(b.classList.contains("check")){
     var row=b.closest(".set"),ex=EX[row.dataset.ex],day=dayById(state.day||nextDay());
