@@ -1,0 +1,16 @@
+{
+  "name": "Snaga i masa",
+  "short_name": "Snaga i masa",
+  "description": "Plan treninga 4 puta nedjeljno sa dnevnikom serija i tajmerom odmora.",
+  "lang": "sr-Latn-ME",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F5F4F8",
+  "theme_color": "#A81E5B",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

@@ -1,0 +1,647 @@
+<title>Snaga i masa</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap">
+<style>
+/* Layout: one phone-width column; sticky header with three tabs; the workout is a numbered run of exercises with a set log under each; rest timer docks at the bottom. */
+:root{
+  --bg:#F5F4F8; --surface:#FFFFFF; --ink:#1C1929; --muted:#676279; --line:#DFDCE8;
+  --accent:#A81E5B; --accent-ink:#FFFFFF; --accent-soft:#F8E4EC;
+  --ok:#0B7A66; --ok-ink:#FFFFFF; --ok-soft:#DDF2EC;
+  --display:"Barlow Condensed","Avenir Next Condensed","Roboto Condensed","Arial Narrow",Arial,sans-serif;
+  --body:"Barlow",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#14121B; --surface:#1E1B28; --ink:#EFEDF6; --muted:#A6A1B8; --line:#343043;
+    --accent:#F27AA8; --accent-ink:#2A0A18; --accent-soft:#3A1A29;
+    --ok:#4FD1B5; --ok-ink:#06261F; --ok-soft:#143A33; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#14121B; --surface:#1E1B28; --ink:#EFEDF6; --muted:#A6A1B8; --line:#343043;
+  --accent:#F27AA8; --accent-ink:#2A0A18; --accent-soft:#3A1A29;
+  --ok:#4FD1B5; --ok-ink:#06261F; --ok-soft:#143A33; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:600px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2,h3{font-family:var(--display);font-weight:700;line-height:1.1;margin:0;text-wrap:balance;letter-spacing:.01em}
+p{margin:0}
+
+/* header */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--bg);border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 10px;padding-block:10px}
+.brand{font-family:var(--display);font-weight:700;font-size:1.25rem;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap}
+.brand span{color:var(--accent)}
+.tabs{display:flex;gap:4px}
+.tabs a{font-family:var(--display);font-weight:600;font-size:1rem;text-transform:uppercase;letter-spacing:.04em;text-decoration:none;color:var(--muted);padding:6px 8px;border-radius:6px;transition:background-color .2s,color .2s,transform .12s}
+.tabs a[aria-current="page"]{color:var(--accent-ink);background:var(--accent)}
+
+main{padding-block:20px 120px;display:flex;flex-direction:column;gap:24px}
+
+/* day picker */
+.days{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.day{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 4px;display:flex;flex-direction:column;align-items:center;gap:0;min-width:0}
+.day small{font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.day b{font-family:var(--display);font-weight:700;font-size:1.15rem;line-height:1.05;text-align:center;text-transform:uppercase;overflow-wrap:anywhere}
+.day[aria-pressed="true"]{background:var(--ink);border-color:var(--ink)}
+.day[aria-pressed="true"] b{color:var(--bg)}
+.day[aria-pressed="true"] small{color:var(--bg);opacity:.7}
+
+.dayhead{display:flex;flex-direction:column;gap:8px}
+.dayhead h1{font-size:2.2rem;text-transform:uppercase}
+.dayhead p{color:var(--muted)}
+.bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ok);width:0;border-radius:3px;transition:width .55s cubic-bezier(.3,1.4,.5,1)}
+.barlabel{font-size:.85rem;color:var(--muted);font-variant-numeric:tabular-nums}
+
+/* exercise */
+.exlist{display:flex;flex-direction:column;gap:0}
+.ex{padding-block:20px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:12px}
+.exhead{display:grid;grid-template-columns:auto 1fr;column-gap:12px;align-items:start}
+.num{font-family:var(--display);font-weight:700;font-size:2rem;line-height:1;color:var(--accent);font-variant-numeric:tabular-nums;min-width:1.2ch}
+.exhead h2{font-size:1.45rem}
+.eng{font-size:.85rem;color:var(--muted)}
+.target{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.95rem;margin-top:4px}
+.target b{font-family:var(--display);font-size:1.15rem;letter-spacing:.02em}
+.target span{color:var(--muted)}
+.hint{font-size:.9rem;background:var(--accent-soft);border-radius:6px;padding:8px 10px}
+.hint b{font-weight:600}
+.sets{display:flex;flex-direction:column;gap:6px}
+.set{display:grid;grid-template-columns:1.6rem 1fr 1fr 3rem;gap:8px;align-items:center}
+.set .n{font-family:var(--display);font-weight:600;color:var(--muted);text-align:center;font-size:1.1rem}
+.field{position:relative;min-width:0}
+.field input{width:100%;height:46px;border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:0 2.6rem 0 12px;font-size:1.1rem;font-weight:500;font-variant-numeric:tabular-nums}
+.field input::placeholder{color:var(--muted);opacity:.6;font-weight:400}
+.field label{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:.75rem;color:var(--muted);pointer-events:none}
+.check{height:46px;border-radius:8px;border:1px solid var(--line);background:var(--surface);font-size:1.2rem;line-height:1;color:var(--muted)}
+.set.done .check{background:var(--ok);border-color:var(--ok);color:var(--ok-ink)}
+.set.done .field input{background:var(--ok-soft);border-color:var(--ok-soft)}
+details{border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+summary{padding:10px 12px;font-weight:600;cursor:pointer;font-size:.95rem}
+.how{padding:0 12px 12px;display:flex;flex-direction:column;gap:10px;font-size:.95rem}
+.how ol{margin:0;padding-left:1.2rem;display:flex;flex-direction:column;gap:4px}
+.how .lbl{font-size:.72rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:600;display:block}
+.video{display:inline-flex;align-items:center;gap:8px;align-self:flex-start;text-decoration:none;font-weight:600;color:var(--accent);border:1px solid var(--accent);border-radius:8px;padding:8px 12px}
+.btn{height:50px;border-radius:8px;border:0;background:var(--accent);color:var(--accent-ink);font-family:var(--display);font-weight:700;font-size:1.25rem;text-transform:uppercase;letter-spacing:.05em;padding:0 20px}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);height:42px;font-size:1.05rem}
+.btn.wide{width:100%}
+
+/* timer */
+.timer{position:fixed;left:0;right:0;bottom:0;z-index:8;background:var(--ink);color:var(--bg);padding-bottom:env(safe-area-inset-bottom,0px)}
+.timer .wrap{display:flex;align-items:center;gap:12px;padding-block:10px}
+.timer .t{font-family:var(--display);font-weight:700;font-size:2.2rem;line-height:1;font-variant-numeric:tabular-nums;min-width:4.2ch}
+.timer .what{flex:1;min-width:0;font-size:.85rem;opacity:.8;line-height:1.3;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.timer button{height:40px;border-radius:8px;border:1px solid currentColor;background:transparent;color:inherit;padding:0 12px;font-weight:600;opacity:.9}
+.timer.over{background:var(--ok);color:var(--ok-ink)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);top:calc(104px + env(safe-area-inset-top,0px));z-index:11;width:max-content;box-shadow:0 6px 20px rgba(0,0,0,.25);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-weight:500;max-width:calc(100% - 32px);text-align:center}
+
+/* guide + progress */
+.sec{display:flex;flex-direction:column;gap:12px}
+.sec>h2{font-size:1.7rem;text-transform:uppercase}
+.sec p,.sec li{max-width:62ch}
+.sec ul{margin:0;padding-left:1.2rem;display:flex;flex-direction:column;gap:6px}
+.lead{font-size:1.1rem}
+.week{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.week div{border:1px solid var(--line);border-radius:6px;padding:6px 2px;text-align:center;min-width:0;background:var(--surface)}
+.week small{display:block;font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.week b{display:block;font-family:var(--display);font-size:.8rem;line-height:1.05;text-transform:uppercase;overflow-wrap:anywhere}
+@media (max-width:380px){.brand{font-size:1.1rem}.tabs{gap:2px}.tabs a{padding:6px 6px;font-size:.95rem}}
+.week .rest{background:transparent;border-style:dashed}
+.week .rest b{color:var(--muted);font-weight:600}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;margin:0}
+.kv dt{font-family:var(--display);font-weight:700;font-size:1.2rem;color:var(--accent);white-space:nowrap}
+.kv dd{margin:0}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px}
+.stat b{display:block;font-family:var(--display);font-size:2.2rem;line-height:1;font-variant-numeric:tabular-nums}
+.stat span{font-size:.85rem;color:var(--muted)}
+.rows{display:flex;flex-direction:column}
+.row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding-block:10px;border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
+.row .l{min-width:0}
+.row .l small{display:block;color:var(--muted);font-size:.85rem}
+.row .r{text-align:right;white-space:nowrap;font-weight:500}
+.up{color:var(--ok);font-weight:600}
+.inline{display:flex;gap:8px}
+.inline .field{flex:1}
+.empty{color:var(--muted);border:1px dashed var(--line);border-radius:8px;padding:16px}
+textarea{width:100%;min-height:80px;border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:10px;font-size:1rem}
+.del{border:1px solid var(--line);background:transparent;border-radius:6px;padding:4px 10px;font-size:.85rem;color:var(--muted)}
+.note{font-size:.9rem;color:var(--muted)}
+.btn.danger{color:var(--muted)}
+
+/* motion */
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.28)}100%{transform:scale(1)}}
+@keyframes ring{from{box-shadow:0 0 0 0 var(--ok)}to{box-shadow:0 0 0 12px transparent}}
+@keyframes stamp{0%{transform:scale(2.4) rotate(-20deg);opacity:0}60%{transform:scale(.88) rotate(5deg);opacity:1}100%{transform:none}}
+@keyframes slideup{from{transform:translateY(100%)}to{transform:none}}
+@keyframes pulse{50%{transform:scale(1.07)}}
+@keyframes toastin{from{opacity:0;transform:translate(-50%,-14px)}to{opacity:1;transform:translate(-50%,0)}}
+main>*{animation:rise .4s cubic-bezier(.2,.7,.2,1) both}
+main>*:nth-child(2){animation-delay:.06s}
+main>*:nth-child(3){animation-delay:.12s}
+main>*:nth-child(n+4){animation-delay:.18s}
+.ex{animation:rise .45s cubic-bezier(.2,.7,.2,1) both;animation-delay:calc(.12s + var(--i,0)*.06s)}
+.day,.check,.btn,.del,.timer button{transition:transform .12s,background-color .2s,border-color .2s,color .2s}
+.day:active,.check:active,.btn:active,.del:active,.timer button:active,.tabs a:active{transform:scale(.94)}
+.field input{transition:background-color .25s,border-color .25s}
+.set.just .check{animation:pop .35s ease-out,ring .6s ease-out}
+.num{transition:color .25s}
+.ex.complete .num{color:var(--ok)}
+.num.stamp{animation:stamp .45s cubic-bezier(.2,.8,.3,1.2)}
+details[open] .how{animation:rise .3s ease-out}
+.btn.ready{animation:pulse 1.1s ease-in-out 3}
+.timer:not([hidden]){animation:slideup .3s cubic-bezier(.2,.7,.2,1)}
+.timer .strip{position:absolute;left:0;top:0;height:4px;width:100%;background:var(--accent);transform-origin:left;transition:transform .25s linear}
+.timer.soon .t{animation:pulse 1s ease-in-out infinite}
+.timer.over .t{animation:pulse .6s ease-in-out 4}
+.toast:not([hidden]){animation:toastin .25s ease-out}
+#fx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:12}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-delay:0s!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+</style>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand">Snaga <span>&amp;</span> masa</div>
+    <nav class="tabs" aria-label="Glavni meni">
+      <a href="#trening" data-tab="trening">Trening</a>
+      <a href="#vodic" data-tab="vodic">Vodič</a>
+      <a href="#napredak" data-tab="napredak">Napredak</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap" id="app"></main>
+
+<canvas id="fx" hidden aria-hidden="true"></canvas>
+<div class="timer" id="timer" hidden>
+  <i class="strip" id="timerStrip"></i>
+  <div class="wrap">
+    <div class="t" id="timerT">0:00</div>
+    <div class="what" id="timerWhat">Odmor</div>
+    <button type="button" id="timerAdd">+30 s</button>
+    <button type="button" id="timerSkip">Preskoči</button>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------- plan ---------- */
+var DAYS=[
+{id:"donjiA",short:"Donji A",dow:"Pon",title:"Donji dio A",focus:"Čučanj, zadnja loža i listovi. Najteži trening u nedjelji, zato ide prvi.",ex:[
+ {id:"squat",name:"Čučanj sa šipkom",eng:"Back squat",sets:3,lo:6,hi:8,rest:150,step:2.5,m:"kvadriceps, gluteus",
+  cues:["Šipka leži na gornjem dijelu leđa, ne na vratu. Stopala u širini ramena, prsti blago ka spolja.","Udahni duboko i stegni stomak prije svakog ponavljanja.","Spuštaj se kao da sjedaš između peta, koljena idu u pravcu prstiju.","Spusti se bar dok butine ne budu paralelne s podom, pa se odgurni cijelim stopalom."],
+  err:"Koljena upadaju ka unutra ili se pete odižu od poda. Smanji težinu i uspori spuštanje.",alt:"Goblet čučanj s bučicom, dok tehnika ne postane sigurna.",q:"barbell back squat proper form for beginners"},
+ {id:"rdl",name:"Rumunsko mrtvo dizanje",eng:"Romanian deadlift",sets:3,lo:8,hi:10,rest:120,step:2.5,m:"zadnja loža, gluteus",
+  cues:["Stani uspravno sa šipkom u rukama, koljena blago savijena i tako ostaju.","Guraj kukove unazad, kao da zadnjicom zatvaraš vrata iza sebe.","Šipka klizi niz butine, leđa su ravna cijelim putem.","Spuštaj dok ne osjetiš jako istezanje zadnje lože (obično malo ispod koljena), pa kukovima naprijed."],
+  err:"Zaobljena leđa ili pretvaranje pokreta u čučanj. Pokret dolazi iz kukova.",alt:"Ista vježba s dvije bučice.",q:"romanian deadlift proper form"},
+ {id:"legpress",name:"Nožna presa",eng:"Leg press",sets:3,lo:10,hi:12,rest:120,step:5,m:"kvadriceps, gluteus",
+  cues:["Stopala na sredini platforme, u širini kukova.","Spuštaj polako dok koljena ne dođu blizu grudi, donji dio leđa ostaje na naslonu.","Guraj kroz pete i sredinu stopala.","Na vrhu ne zaključavaj koljena do kraja."],
+  err:"Prekratak pokret s prevelikom težinom.",alt:"Hack čučanj ili goblet čučanj.",q:"leg press proper form"},
+ {id:"legcurl",name:"Pregib nogu na mašini",eng:"Leg curl",sets:3,lo:10,hi:15,rest:75,step:2.5,m:"zadnja loža",
+  cues:["Podesi mašinu tako da je osovina u liniji s koljenom.","Privuci pete ka zadnjici bez odizanja kukova.","Zadrži sekundu u skupljenom položaju.","Vraćaj polako, oko dvije sekunde."],
+  err:"Trzanje težine i odizanje kukova sa sjedišta.",alt:"Pregib nogu s loptom na podu.",q:"seated leg curl proper form"},
+ {id:"calf",name:"Podizanje na prste",eng:"Calf raise",sets:3,lo:10,hi:15,rest:60,step:2.5,m:"listovi",
+  cues:["Prednji dio stopala je na ivici stepenika ili mašine.","Spusti pete skroz dolje i zadrži sekundu u istezanju.","Popni se što više možeš na prste i zadrži sekundu."],
+  err:"Brzo odskakivanje bez zadržavanja dolje i gore.",alt:"Na nožnoj presi ili s bučicom u ruci na stepeniku.",q:"standing calf raise proper form"},
+ {id:"plank",name:"Plank",eng:"Izdržaj na laktovima",sets:3,lo:30,hi:45,rest:60,unit:"s",noKg:true,m:"trbušni zid",
+  cues:["Laktovi ispod ramena, tijelo u ravnoj liniji od glave do peta.","Stegni zadnjicu i stomak, kao da očekuješ udarac.","Diši normalno i drži do zadatog vremena."],
+  err:"Kukovi propadaju ili idu previsoko.",alt:"Plank na koljenima.",q:"plank proper form"}
+]},
+{id:"gornjiA",short:"Gornji A",dow:"Uto",title:"Gornji dio A",focus:"Potisci za grudi i ramena, uz dvije vježbe povlačenja za leđa.",ex:[
+ {id:"dbbench",name:"Potisak s klupe bučicama",eng:"Dumbbell bench press",sets:3,lo:6,hi:10,rest:150,step:1,m:"grudi, triceps, prednje rame",
+  cues:["Lezi na ravnu klupu, lopatice skupi i spusti, stopala čvrsto na podu.","Bučice su iznad grudi, laktovi pod uglom od oko 45° u odnosu na tijelo.","Spuštaj polako do visine grudi.","Potisni gore i blago ka sredini, bez sudaranja bučica."],
+  err:"Laktovi rašireni pod 90° i ramena koja se odižu s klupe.",alt:"Potisak na mašini za grudi.",q:"dumbbell bench press proper form"},
+ {id:"latpd",name:"Lat povlačenje",eng:"Lat pulldown",sets:3,lo:8,hi:12,rest:120,step:2.5,m:"široki leđni mišić, biceps",
+  cues:["Hvat malo širi od ramena, butine učvršćene ispod jastuka.","Blago se nagni unazad i podigni grudi.","Povuci šipku ka gornjem dijelu grudi, laktovi idu dolje i ka džepovima.","Vraćaj polako dok se ruke potpuno ne ispruže."],
+  err:"Ljuljanje tijelom i povlačenje iza vrata.",alt:"Zgibovi uz pomoć.",q:"lat pulldown proper form"},
+ {id:"ohp",name:"Potisak iznad glave bučicama, sjedeći",eng:"Seated dumbbell shoulder press",sets:3,lo:8,hi:10,rest:120,step:1,m:"ramena, triceps",
+  cues:["Naslon skoro uspravan, leđa na naslonu, stomak stegnut.","Bučice kreću od visine ušiju, laktovi malo ispred tijela.","Potisni pravo gore dok se ruke ne ispruže.","Spuštaj kontrolisano do početnog položaja."],
+  err:"Pretjerano izvijanje donjeg dijela leđa.",alt:"Potisak na mašini za ramena.",q:"seated dumbbell shoulder press proper form"},
+ {id:"cablerow",name:"Veslanje na sajli, sjedeći",eng:"Seated cable row",sets:3,lo:10,hi:12,rest:90,step:2.5,m:"srednji dio leđa, biceps",
+  cues:["Sjedi uspravno, koljena blago savijena.","Povuci ručku ka stomaku, laktovi uz tijelo.","Na kraju skupi lopatice i zadrži sekundu.","Vraćaj polako, pusti da se lopatice razdvoje, ali trup ostaje miran."],
+  err:"Naginjanje naprijed-nazad da bi se pomjerila težina.",alt:"Veslanje na mašini s osloncem za grudi.",q:"seated cable row proper form"},
+ {id:"latraise",name:"Odručenja bučicama",eng:"Lateral raise",sets:3,lo:12,hi:15,rest:60,step:1,m:"srednje rame",
+  cues:["Stani uspravno, bučice uz tijelo, laktovi blago savijeni.","Podiži ruke u stranu do visine ramena, laktovi vode pokret.","Spuštaj sporije nego što si podizala."],
+  err:"Zamah tijelom i podizanje ramena ka ušima. Ovdje ide laka težina.",alt:"Odručenja na sajli.",q:"dumbbell lateral raise proper form"},
+ {id:"pushdown",name:"Triceps potisak na sajli",eng:"Triceps pushdown",sets:2,lo:10,hi:15,rest:60,step:2.5,m:"triceps",
+  cues:["Laktovi priljubljeni uz tijelo i ne pomjeraju se.","Potisni ručku dolje dok se ruke potpuno ne ispruže.","Vraćaj polako do ugla od oko 90° u laktu."],
+  err:"Laktovi bježe naprijed i ramena preuzimaju pokret.",alt:"Opružanje s konopcem umjesto šipke.",q:"triceps pushdown proper form"},
+ {id:"curl",name:"Biceps pregib bučicama",eng:"Dumbbell curl",sets:2,lo:10,hi:15,rest:60,step:1,m:"biceps",
+  cues:["Stani uspravno, dlanovi gledaju naprijed, laktovi uz tijelo.","Savij ruke bez pomjeranja laktova.","Spuštaj polako do potpuno ispruženih ruku."],
+  err:"Ljuljanje trupom da bi se podigla težina.",alt:"Pregib na sajli ili s EZ šipkom.",q:"dumbbell bicep curl proper form"}
+]},
+{id:"donjiB",short:"Donji B",dow:"Čet",title:"Donji dio B",focus:"Gluteus i zadnja loža u prvom planu, noge pojedinačno i trbušnjaci.",ex:[
+ {id:"hipthrust",name:"Hip thrust",eng:"Potisak kukovima sa šipkom",sets:4,lo:8,hi:10,rest:150,step:5,m:"gluteus",
+  cues:["Gornji dio leđa (ispod lopatica) je na ivici klupe, šipka preko kukova s podmetačem.","Stopala u širini kukova, tako da su potkoljenice uspravne na vrhu pokreta.","Brada ka grudima, guraj kroz pete i podigni kukove dok trup ne bude ravan.","Na vrhu stegni zadnjicu sekundu, pa spuštaj kontrolisano."],
+  err:"Izvijanje donjeg dijela leđa na vrhu umjesto stezanja zadnjice.",alt:"Glute bridge na podu ili hip thrust na mašini.",q:"barbell hip thrust proper form"},
+ {id:"bss",name:"Bugarski čučanj",eng:"Bulgarian split squat",sets:3,lo:8,hi:10,rest:120,step:1,per:"po nozi",m:"kvadriceps, gluteus",
+  cues:["Zadnja noga je na klupi, prednja dovoljno naprijed da peta ostane na podu.","Spuštaj se pravo dolje dok zadnje koljeno ne dođe blizu poda.","Blago se nagni trupom naprijed, težina je na prednjoj nozi.","Odgurni se prednjom nogom. Prvo uradi sve na slabijoj nozi."],
+  err:"Prednje stopalo preblizu klupi, pa se peta odiže.",alt:"Iskorak unazad s bučicama.",q:"bulgarian split squat proper form"},
+ {id:"hyper",name:"Hiperekstenzija 45°",eng:"Back extension",sets:3,lo:10,hi:12,rest:90,step:2.5,m:"gluteus, zadnja loža, donja leđa",
+  cues:["Jastuk je ispod kukova, tako da se slobodno savijaš u kuku.","Spusti se s ravnim leđima dok ne osjetiš istezanje zadnje lože.","Podigni se stezanjem zadnjice dok tijelo ne bude u ravnoj liniji, ne više.","Kad postane lako, drži teg na grudima i upiši njegovu težinu."],
+  err:"Prekomjerno izvijanje leđa na vrhu.",alt:"Rumunsko mrtvo dizanje s lakšim bučicama.",q:"45 degree back extension glute focus form"},
+ {id:"legext",name:"Opružanje nogu",eng:"Leg extension",sets:2,lo:12,hi:15,rest:75,step:2.5,m:"kvadriceps",
+  cues:["Koljeno je u liniji s osovinom mašine, leđa na naslonu.","Ispruži noge do kraja i zadrži sekundu.","Spuštaj polako, oko dvije sekunde."],
+  err:"Trzanje i odizanje sa sjedišta.",alt:"Goblet čučanj s petama na povišenju.",q:"leg extension proper form"},
+ {id:"abd",name:"Abdukcija kukova na mašini",eng:"Hip abduction",sets:2,lo:15,hi:20,rest:60,step:2.5,m:"srednji gluteus",
+  cues:["Sjedi uspravno ili se blago nagni naprijed.","Raširi koljena što više možeš i zadrži sekundu.","Vraćaj polako, tegovi se ne spuštaju do kraja između ponavljanja."],
+  err:"Kratak, brz pokret bez zadržavanja.",alt:"Hodanje u stranu s gumom oko koljena.",q:"hip abduction machine proper form"},
+ {id:"legraise",name:"Podizanje nogu ležeći",eng:"Lying leg raise",sets:3,lo:10,hi:15,rest:60,noKg:true,m:"trbušnjaci",
+  cues:["Lezi na leđa, donji dio leđa pritisni uz pod.","Podigni ispružene ili blago savijene noge do vertikale.","Spuštaj polako i stani prije nego što se leđa odvoje od poda."],
+  err:"Leđa se izvijaju pri spuštanju. Tada savij koljena.",alt:"Privlačenje koljena ka grudima.",q:"lying leg raise proper form"}
+]},
+{id:"gornjiB",short:"Gornji B",dow:"Pet",title:"Gornji dio B",focus:"Povlačenja za leđa i držanje, uz potiske iz drugog ugla.",ex:[
+ {id:"dbrow",name:"Veslanje bučicom jednom rukom",eng:"One-arm dumbbell row",sets:3,lo:8,hi:10,rest:90,step:1,per:"po ruci",m:"leđa, biceps",
+  cues:["Ruka i koljeno iste strane su na klupi, leđa ravna i paralelna s podom.","Povuci bučicu ka kuku, lakat ide uz tijelo.","Na vrhu skupi lopaticu, pa spuštaj do potpuno ispružene ruke."],
+  err:"Rotiranje trupa da bi se podigla težina.",alt:"Veslanje na mašini s osloncem za grudi.",q:"one arm dumbbell row proper form"},
+ {id:"incline",name:"Potisak na kosoj klupi bučicama",eng:"Incline dumbbell press",sets:3,lo:8,hi:10,rest:120,step:1,m:"gornji dio grudi, ramena",
+  cues:["Klupa pod uglom od oko 30°, lopatice skupljene.","Bučice spuštaj do gornjeg dijela grudi, laktovi pod oko 45°.","Potisni gore dok se ruke ne ispruže."],
+  err:"Prestrm naslon, pa ramena rade umjesto grudi.",alt:"Potisak na kosoj mašini.",q:"incline dumbbell press proper form"},
+ {id:"pullup",name:"Zgibovi uz pomoć",eng:"Assisted pull-up",sets:3,lo:6,hi:10,rest:120,step:5,assist:true,m:"leđa, biceps",
+  cues:["Koristi mašinu za pomoć ili gumu. U polje za kg upiši koliko pomoći koristiš.","Kreni iz potpuno ispruženih ruku, prvo spusti lopatice.","Povuci se dok brada ne pređe šipku, laktovi idu ka rebrima.","Spuštaj se polako, oko dvije sekunde."],
+  err:"Polovična ponavljanja bez potpunog spuštanja.",alt:"Lat povlačenje uskim hvatom.",q:"assisted pull up machine proper form"},
+ {id:"pushup",name:"Sklekovi",eng:"Push-up",sets:3,lo:6,hi:15,rest:90,noKg:true,m:"grudi, triceps, trup",
+  cues:["Dlanovi malo šire od ramena, tijelo ravno kao u planku.","Spuštaj se dok grudi ne dođu skoro do poda, laktovi pod oko 45°.","Odgurni se bez propadanja kukova."],
+  err:"Kukovi propadaju ili glava ide naprijed.",alt:"Ruke na klupi ili šipki u visini kukova. Niže povišenje znači teže.",q:"push up proper form for beginners incline push up"},
+ {id:"facepull",name:"Face pull na sajli",eng:"Face pull",sets:3,lo:12,hi:15,rest:60,step:2.5,m:"zadnje rame, gornja leđa",
+  cues:["Konopac je u visini lica, hvat s palčevima ka sebi.","Povuci ka licu i razdvoji ruke, laktovi visoko.","Na kraju rotiraj šake unazad, zadrži sekundu."],
+  err:"Prevelika težina i naginjanje unazad.",alt:"Razvlačenje gume ili obrnuta odručenja s bučicama.",q:"face pull proper form"},
+ {id:"hammer",name:"Čekić pregib",eng:"Hammer curl",sets:2,lo:10,hi:12,rest:60,step:1,m:"biceps, podlaktica",
+  cues:["Dlanovi gledaju jedan ka drugom cijelim pokretom.","Savij ruke bez pomjeranja laktova.","Spuštaj polako."],
+  err:"Zamah trupom.",alt:"Čekić pregib s konopcem na sajli.",q:"hammer curl proper form"},
+ {id:"ohtri",name:"Triceps opružanje iznad glave",eng:"Overhead triceps extension",sets:2,lo:10,hi:12,rest:60,step:1,m:"triceps",
+  cues:["Jedna bučica s obje ruke ili konopac na sajli, laktovi gledaju naprijed.","Spusti teret iza glave dok ne osjetiš istezanje.","Ispruži ruke bez širenja laktova."],
+  err:"Laktovi se šire u stranu.",alt:"Triceps potisak na sajli.",q:"overhead triceps extension proper form"}
+]}];
+var EX={};DAYS.forEach(function(d){d.ex.forEach(function(e){EX[e.id]=e;});});
+
+/* ---------- storage (this phone's browser) ---------- */
+var KEY="snaga-masa-v1";
+var state={sessions:[],drafts:{},bw:[],day:null};
+var storeOK=true;
+/* Accept only well-formed records: stored or pasted data is rebuilt field by field, never used as-is. */
+function clean(o){
+  if(!o||typeof o!=="object"||!Array.isArray(o.sessions))return null;
+  var out={sessions:[],bw:[]};
+  o.sessions.forEach(function(s,i){
+    if(!s||typeof s!=="object"||!s.sets||typeof s.sets!=="object")return;
+    var date=Number(s.date);if(!isFinite(date)||date<=0)return;
+    var sets={},n=0;
+    Object.keys(s.sets).forEach(function(k){
+      if(!EX[k]||!Array.isArray(s.sets[k]))return;
+      var arr=[];
+      s.sets[k].forEach(function(x){if(!x||typeof x!=="object")return;var r=num(x.reps);if(r==null||r<=0)return;arr.push({kg:x.kg==null?null:num(x.kg),reps:r});});
+      if(arr.length){sets[k]=arr;n++;}
+    });
+    if(!n)return;
+    var day=DAYS[0].id;DAYS.forEach(function(d){if(d.id===s.day)day=d.id;});
+    out.sessions.push({id:String(date)+"-"+i,date:date,day:day,sets:sets});
+  });
+  out.sessions.sort(function(a,b){return a.date-b.date;});
+  if(Array.isArray(o.bw))o.bw.forEach(function(b){if(!b||typeof b!=="object")return;var kg=num(b.kg),d=Number(b.date);if(kg!=null&&isFinite(d)&&d>0)out.bw.push({date:d,kg:kg});});
+  return out;
+}
+function cleanDrafts(dr){
+  var out={};if(!dr||typeof dr!=="object")return out;
+  DAYS.forEach(function(d){
+    var src=dr[d.id];if(!src||typeof src!=="object")return;var o={};
+    d.ex.forEach(function(ex){var a=src[ex.id];if(!Array.isArray(a))return;var r=[];
+      for(var i=0;i<ex.sets;i++){var s=a[i]&&typeof a[i]==="object"?a[i]:{};r.push({kg:s.kg==null?"":String(s.kg),reps:s.reps==null?"":String(s.reps),done:!!s.done});}
+      o[ex.id]=r;});
+    out[d.id]=o;});
+  return out;
+}
+var raw=null;
+try{raw=localStorage.getItem(KEY);}catch(e){storeOK=false;}
+if(raw){try{var p=JSON.parse(raw),c0=clean(p);if(c0){state.sessions=c0.sessions;state.bw=c0.bw;}state.drafts=cleanDrafts(p&&p.drafts);state.day=p&&typeof p.day==="string"?p.day:null;}catch(e){}}
+var saveT=null;
+function flush(){clearTimeout(saveT);saveT=null;try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){if(storeOK){storeOK=false;storeNote();}}}
+function save(){clearTimeout(saveT);saveT=setTimeout(flush,200);}
+function storeNote(){var n=document.getElementById("storeNote");if(n)n.textContent=storeOK?"Upiši kg i ponavljanja, pa štikliraj seriju. Odmor se tada sam pokreće. Podaci se čuvaju na ovom telefonu.":"Ovaj pregledač trenutno ne dozvoljava čuvanje podataka, pa će unos nestati kad zatvoriš stranicu. Otvori link u običnom (ne privatnom) prozoru pregledača.";}
+window.addEventListener("pagehide",function(){if(saveT)flush();});
+document.addEventListener("visibilitychange",function(){if(document.hidden&&saveT)flush();});
+
+/* ---------- helpers ---------- */
+var app=document.getElementById("app");
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+function num(v){if(v===""||v==null)return null;var n=parseFloat(String(v).replace(",","."));return isFinite(n)&&n>=0?n:null;}
+function fmt(n){return n==null?"":String(Math.round(n*100)/100).replace(".",",");}
+function fmtDate(ts){var d=new Date(ts);return ("0"+d.getDate()).slice(-2)+"."+("0"+(d.getMonth()+1)).slice(-2)+"."+d.getFullYear()+".";}
+function mmss(s){s=Math.max(0,Math.ceil(s));return Math.floor(s/60)+":"+("0"+s%60).slice(-2);}
+function restLabel(s){return s%60===0?(s/60)+" min":mmss(s)+" min";}
+function dayById(id){for(var i=0;i<DAYS.length;i++)if(DAYS[i].id===id)return DAYS[i];return DAYS[0];}
+function lastSets(exId){for(var i=state.sessions.length-1;i>=0;i--){var s=state.sessions[i].sets[exId];if(s&&s.length)return s;}return null;}
+function nextDay(){if(!state.sessions.length)return DAYS[0].id;var last=state.sessions[state.sessions.length-1].day;for(var i=0;i<DAYS.length;i++)if(DAYS[i].id===last)return DAYS[(i+1)%DAYS.length].id;return DAYS[0].id;}
+function draftFor(dayId){if(!state.drafts[dayId])state.drafts[dayId]={};return state.drafts[dayId];}
+function setsFor(dayId,ex){var d=draftFor(dayId);if(!d[ex.id]){d[ex.id]=[];for(var i=0;i<ex.sets;i++)d[ex.id].push({kg:"",reps:"",done:false});}return d[ex.id];}
+var toastT=null;
+function toast(msg){var t=document.getElementById("toast");t.hidden=true;t.textContent=msg;void t.offsetWidth;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(function(){t.hidden=true;},2800);}
+
+/* effects: confetti, count-up, sound */
+var calm=!!(window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+var cv=document.getElementById("fx"),cx=cv.getContext("2d"),parts=[],raf=null;
+function burst(x,y,n){
+  if(calm||!cx)return;
+  var cs=getComputedStyle(document.documentElement);
+  var cols=["--accent","--ok","--ink","--muted"].map(function(k){return cs.getPropertyValue(k).trim()||"#888";});
+  var dpr=Math.min(window.devicePixelRatio||1,2);
+  cv.hidden=false;cv.width=window.innerWidth*dpr;cv.height=window.innerHeight*dpr;cx.setTransform(dpr,0,0,dpr,0,0);
+  for(var i=0;i<n;i++){var a=Math.random()*Math.PI*2,v=4+Math.random()*9;
+    parts.push({x:x,y:y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-6,s:5+Math.random()*6,r:Math.random()*6,vr:(Math.random()-.5)*.4,c:cols[i%cols.length],life:1});}
+  if(!raf)raf=requestAnimationFrame(fxStep);
+}
+function fxStep(){
+  var W=window.innerWidth,H=window.innerHeight;
+  cx.clearRect(0,0,W,H);
+  parts=parts.filter(function(p){return p.life>0&&p.y<H+20;});
+  parts.forEach(function(p){p.vy+=.35;p.vx*=.985;p.x+=p.vx;p.y+=p.vy;p.r+=p.vr;p.life-=.012;
+    cx.save();cx.translate(p.x,p.y);cx.rotate(p.r);cx.globalAlpha=Math.max(0,Math.min(1,p.life*2));cx.fillStyle=p.c;cx.fillRect(-p.s/2,-p.s/4,p.s,p.s/2);cx.restore();});
+  if(parts.length)raf=requestAnimationFrame(fxStep);else{raf=null;cv.hidden=true;}
+}
+function countUp(el){
+  var n=+el.dataset.count||0,suf=el.dataset.suf||"";
+  if(calm||!n){el.textContent=n+suf;return;}
+  var t0=null;
+  function f(t){if(t0==null)t0=t;var k=Math.min(1,(t-t0)/650);el.textContent=Math.round(n*(1-Math.pow(1-k,3)))+suf;if(k<1)requestAnimationFrame(f);}
+  requestAnimationFrame(f);
+}
+var ac=null;
+function armAudio(){try{if(!ac){var A=window.AudioContext||window.webkitAudioContext;if(A)ac=new A();}if(ac&&ac.state==="suspended")ac.resume();}catch(e){}}
+function beep(){try{if(!ac)return;[0,.28].forEach(function(d){var o=ac.createOscillator(),g=ac.createGain(),t=ac.currentTime+d;
+  o.frequency.value=880;g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.3,t+.02);g.gain.exponentialRampToValueAtTime(.0001,t+.2);
+  o.connect(g);g.connect(ac.destination);o.start(t);o.stop(t+.22);});}catch(e){}}
+/* best set so far for an exercise: saved sessions plus sets already ticked today */
+function bestSoFar(ex,dayId,skip){
+  var b=null,seen=false;
+  function take(kg,reps){kg=kg||0;if(!b||kg>b.kg||(kg===b.kg&&reps>b.reps))b={kg:kg,reps:reps};}
+  state.sessions.forEach(function(s){(s.sets[ex.id]||[]).forEach(function(x){seen=true;take(x.kg,x.reps);});});
+  if(!seen)return null;
+  setsFor(dayId,ex).forEach(function(x,i){var r=num(x.reps);if(i!==skip&&x.done&&r)take(ex.noKg?0:num(x.kg),r);});
+  return b;
+}
+function setText(e){return e.map(function(s){return (s.kg!=null?fmt(s.kg)+" kg × ":"")+s.reps;}).join(", ");}
+
+function hintFor(ex){
+  var last=lastSets(ex.id);
+  var u=ex.unit==="s"?" s":"";
+  if(!last){
+    if(ex.unit==="s")return "<b>Prvi put:</b> drži onoliko koliko možeš uz pravilan položaj, do "+ex.hi+" s.";
+    if(ex.noKg)return "<b>Prvi put:</b> radi do 1–2 ponavljanja prije otkaza i upiši broj.";
+    if(ex.assist)return "<b>Prvi put:</b> izaberi pomoć s kojom možeš "+ex.hi+" ponavljanja uz 2 u rezervi.";
+    return "<b>Prvi put:</b> izaberi težinu s kojom možeš "+ex.hi+" ponavljanja i ostanu ti još 2–3 u rezervi.";
+  }
+  var all=last.length>=ex.sets&&last.every(function(s){return s.reps>=ex.hi;});
+  var txt="<b>Prošli put:</b> "+esc(setText(last))+u+". ";
+  if(all){
+    if(ex.unit==="s")txt+="Produži svaku seriju za 5–10 s.";
+    else if(ex.noKg)txt+="Sve serije su na gornjoj granici. Pređi na težu varijantu ili dodaj ponavljanja.";
+    else if(ex.assist)txt+="Sve serije su na gornjoj granici. <b>Smanji pomoć za oko "+fmt(ex.step)+" kg.</b>";
+    else txt+="Sve serije su na gornjoj granici. <b>Dodaj "+fmt(ex.step)+" kg"+(ex.step<=1?" po bučici":"")+".</b>";
+  }else if(ex.unit==="s")txt+="Pokušaj da izdržiš nekoliko sekundi duže.";
+  else if(ex.noKg)txt+="Pokušaj jedno ponavljanje više.";
+  else if(ex.assist)txt+="Ostani na istoj pomoći i pokušaj jedno ponavljanje više.";
+  else txt+="Ostani na istoj težini i pokušaj jedno ponavljanje više.";
+  return txt;
+}
+
+/* ---------- views ---------- */
+function viewWorkout(){
+  var dayId=state.day||nextDay(); var day=dayById(dayId);
+  var h='<div class="days" role="group" aria-label="Izbor treninga">';
+  DAYS.forEach(function(d){h+='<button type="button" class="day" data-day="'+d.id+'" aria-pressed="'+(d.id===day.id)+'"><small>'+d.dow+'</small><b>'+d.short+'</b></button>';});
+  h+='</div>';
+  h+='<div class="dayhead"><h1>'+esc(day.title)+'</h1><p>'+esc(day.focus)+'</p><div class="bar"><i id="prog"></i></div><div class="barlabel" id="progLabel"></div></div>';
+  h+='<div class="exlist">';
+  day.ex.forEach(function(ex,i){
+    var sets=setsFor(day.id,ex); var last=lastSets(ex.id)||[];
+    var range=ex.lo+"–"+ex.hi+(ex.unit==="s"?" s":"")+(ex.per?" "+ex.per:"");
+    var allDone=sets.every(function(s){return s.done;});
+    h+='<article class="ex'+(allDone?" complete":"")+'" style="--i:'+i+'"><div class="exhead"><div class="num" data-n="'+(i+1)+'">'+(allDone?"✓":i+1)+'</div><div><h2>'+esc(ex.name)+'</h2><div class="eng">'+esc(ex.eng)+' · '+esc(ex.m)+'</div>'+
+       '<div class="target"><b>'+ex.sets+' × '+range+'</b><span>odmor '+restLabel(ex.rest)+'</span></div></div></div>';
+    h+='<div class="hint">'+hintFor(ex)+'</div><div class="sets">';
+    sets.forEach(function(s,j){
+      var l=last[j]||last[last.length-1]||{}; var idb=day.id+"-"+ex.id+"-"+j;
+      h+='<div class="set'+(s.done?" done":"")+'" data-ex="'+ex.id+'" data-i="'+j+'"><div class="n">'+(j+1)+'</div>';
+      if(ex.noKg)h+='<div class="field"><input id="'+idb+'-kg" disabled value="" placeholder="svoja težina" aria-label="Bez tega"></div>';
+      else h+='<div class="field"><input id="'+idb+'-kg" type="text" inputmode="decimal" data-f="kg" value="'+esc(s.kg)+'" placeholder="'+(l.kg!=null?fmt(l.kg):"0")+'"><label for="'+idb+'-kg">kg</label></div>';
+      h+='<div class="field"><input id="'+idb+'-reps" type="text" inputmode="numeric" data-f="reps" value="'+esc(s.reps)+'" placeholder="'+esc(l.reps!=null?l.reps:ex.lo)+'"><label for="'+idb+'-reps">'+(ex.unit==="s"?"sek":"pon")+'</label></div>';
+      h+='<button type="button" class="check" aria-pressed="'+s.done+'" aria-label="Serija '+(j+1)+' završena">✓</button></div>';
+    });
+    h+='</div><details><summary>Kako se radi</summary><div class="how"><ol>'+ex.cues.map(function(c){return "<li>"+esc(c)+"</li>";}).join("")+'</ol>'+
+       '<div><span class="lbl">Česta greška</span>'+esc(ex.err)+'</div><div><span class="lbl">Zamjena</span>'+esc(ex.alt)+'</div>'+
+       '<a class="video" target="_blank" rel="noopener" href="https://www.youtube.com/results?search_query='+encodeURIComponent(ex.q)+'">▶ Pogledaj video tehnike</a></div></details></article>';
+  });
+  h+='</div><button type="button" class="btn wide" id="finish">Završi trening</button>'+
+     '<button type="button" class="btn ghost wide danger" id="clearDraft">Poništi današnji unos</button>'+
+     '<p class="note" id="storeNote"></p>';
+  app.innerHTML=h; storeNote(); updateProgress();
+}
+function updateProgress(){
+  var day=dayById(state.day||nextDay()),tot=0,done=0;
+  day.ex.forEach(function(ex){setsFor(day.id,ex).forEach(function(s){tot++;if(s.done)done++;});});
+  var p=document.getElementById("prog");if(!p)return;
+  p.style.width=(tot?done/tot*100:0)+"%";
+  var all=tot>0&&done===tot;
+  document.getElementById("progLabel").textContent=all?"Sve serije su završene. Sačuvaj trening.":"Završeno "+done+" od "+tot+" serija";
+  var f=document.getElementById("finish");if(f)f.classList.toggle("ready",all);
+}
+
+function viewGuide(){
+  var wk=[["Pon","Donji A"],["Uto","Gornji A"],["Sri",null],["Čet","Donji B"],["Pet","Gornji B"],["Sub",null],["Ned",null]];
+  app.innerHTML=
+  '<section class="sec"><h2>Kako plan radi</h2><p class="lead">Četiri treninga nedjeljno, podijeljena na donji i gornji dio tijela. Svaki mišić radi dva puta nedjeljno, što je provjeren raspored za rast snage i mišićne mase.</p>'+
+  '<div class="week">'+wk.map(function(d){return '<div'+(d[1]?"":' class="rest"')+'><small>'+d[0]+'</small><b>'+(d[1]||"odmor")+'</b></div>';}).join("")+'</div>'+
+  '<p>Dane možeš pomjeriti kako ti odgovara. Zadrži redosljed i nemoj raditi više od dva treninga zaredom. Trening traje 60 do 75 minuta.</p></section>'+
+
+  '<section class="sec"><h2>Pravilo napretka</h2><p>Mišić raste kad mu iz nedjelje u nedjelju tražiš malo više. Zato aplikacija pamti šta si uradila i govori ti šta je sljedeći korak.</p>'+
+  '<dl class="kv"><dt>1</dt><dd>Svaka vježba ima raspon ponavljanja, na primjer 6–8. Kreni s težinom s kojom dostižeš donju granicu uz dobru tehniku.</dd>'+
+  '<dt>2</dt><dd>Svakog treninga pokušaj da dodaš jedno ponavljanje u bar jednoj seriji.</dd>'+
+  '<dt>3</dt><dd>Kad u svim serijama dostigneš gornju granicu, dodaj težinu: 2,5 do 5 kg na vježbama za noge, 1 kg po bučici za gornji dio. Ponavljanja će pasti, pa ih ponovo gradiš.</dd></dl></section>'+
+
+  '<section class="sec"><h2>Koliko jako</h2><ul>'+
+  '<li><b>Seriju završi kad ti ostanu 1–2 ponavljanja u rezervi.</b> Posljednja ponavljanja treba da budu spora i teška, ali tehnika ostaje ista.</li>'+
+  '<li>Prve dvije nedjelje ostavi 3 u rezervi i uči pokrete. Pogledaj video za svaku vježbu prije prvog treninga.</li>'+
+  '<li>Odmor između serija je dio treninga: 2 do 2,5 minuta na teškim vježbama, oko minut na lakšim. Tajmer ga mjeri umjesto tebe.</li>'+
+  '<li>Spuštanje tereta traje oko dvije sekunde. Bez trzanja i zamaha.</li></ul></section>'+
+
+  '<section class="sec"><h2>Zagrijavanje</h2><ul>'+
+  '<li>5 minuta laganog hodanja uzbrdo, bicikla ili veslanja.</li>'+
+  '<li>Prije prve vježbe uradi 2–3 lakše serije iste vježbe: prazna šipka × 10, pola radne težine × 6, tri četvrtine × 3.</li>'+
+  '<li>Za ostale vježbe dovoljna je jedna lakša serija.</li></ul></section>'+
+
+  '<section class="sec"><h2>Ishrana</h2><p class="lead">Sa 174 cm i 53 kg, hrana će odlučiti o rezultatu koliko i trening. Bez viška kalorija nema od čega da se gradi mišić.</p>'+
+  '<dl class="kv"><dt>+300 kcal</dt><dd>Jedi oko 300 kcal dnevno više nego do sada. To je jedan dodatni obrok ili šejk: mlijeko, banana, ovsene pahuljice, kikiriki puter.</dd>'+
+  '<dt>90–110 g</dt><dd>Proteina dnevno (oko 1,8–2 g po kilogramu). Meso, riba, jaja, mliječni proizvodi, mahunarke, a whey ako je teško unijeti hranom.</dd>'+
+  '<dt>3–4 obroka</dt><dd>U svakom 25–30 g proteina. Ugljene hidrate ne izbjegavaj, daju energiju za trening.</dd>'+
+  '<dt>0,5–1 kg</dt><dd>Mjesečno je dobar tempo rasta tjelesne težine. Mjeri se jednom nedjeljno ujutru i upiši u Napredak. Ako težina stoji dvije nedjelje, dodaj još 150–200 kcal.</dd>'+
+  '<dt>7–9 h</dt><dd>Sna. Mišić raste dok se odmaraš.</dd></dl>'+
+  '<p class="note">Kreatin monohidrat (3–5 g dnevno) je najbolje istražen dodatak za snagu i nije obavezan.</p></section>'+
+
+  '<section class="sec"><h2>Kad usporiti</h2><ul>'+
+  '<li>Poslije 6–8 nedjelja uzmi jednu lakšu nedjelju: iste vježbe, iste težine, po jedna serija manje.</li>'+
+  '<li>Upala mišića dan-dva poslije treninga je normalna. Oštar bol u zglobu ili leđima nije: prekini tu vježbu i uzmi zamjenu.</li>'+
+  '<li>Ako imaš zdravstveno stanje ili povredu, prvo se posavjetuj s ljekarom.</li></ul></section>';
+}
+
+function weekStart(){var d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7));return d.getTime();}
+function bestSet(sets){var b=null;sets.forEach(function(s){if(!b||(s.kg||0)>(b.kg||0)||((s.kg||0)===(b.kg||0)&&s.reps>b.reps))b=s;});return b;}
+function viewProgress(){
+  var ws=weekStart(),thisWeek=state.sessions.filter(function(s){return s.date>=ws;}).length;
+  var h='<section class="sec"><h2>Napredak</h2><div class="stats"><div class="stat"><b data-count="'+state.sessions.length+'">'+state.sessions.length+'</b><span>treninga ukupno</span></div><div class="stat"><b data-count="'+thisWeek+'" data-suf=" / 4">'+thisWeek+' / 4</b><span>ove nedjelje</span></div></div></section>';
+
+  h+='<section class="sec"><h2>Tjelesna težina</h2><form class="inline" id="bwForm"><div class="field"><input id="bwInput" type="text" inputmode="decimal" placeholder="53,0"><label for="bwInput">kg</label></div><button class="btn" type="submit">Dodaj</button></form>';
+  if(state.bw.length){var first=state.bw[0].kg;h+='<div class="rows">'+state.bw.slice(-8).reverse().map(function(b){var d=Math.round((b.kg-first)*10)/10;return '<div class="row"><div class="l">'+fmtDate(b.date)+'</div><div class="r">'+fmt(b.kg)+' kg'+(d?' <span class="'+(d>0?"up":"")+'">'+(d>0?"+":"")+fmt(d)+'</span>':"")+'</div></div>';}).join("")+'</div>';}
+  else h+='<p class="empty">Upiši težinu jednom nedjeljno, ujutru. Ovdje ćeš vidjeti promjenu u odnosu na prvi unos.</p>';
+  h+='</section>';
+
+  h+='<section class="sec"><h2>Po vježbama</h2>';
+  var rows="";
+  DAYS.forEach(function(d){d.ex.forEach(function(ex){
+    var f=null,l=null;
+    state.sessions.forEach(function(s){var x=s.sets[ex.id];if(x&&x.length){if(!f)f=bestSet(x);l=bestSet(x);}});
+    if(!l)return;
+    var u=ex.unit==="s"?" s":"";
+    function one(b){return (b.kg!=null?fmt(b.kg)+" kg × ":"")+b.reps+u;}
+    var better=ex.assist?((l.kg||0)<(f.kg||0)||l.reps>f.reps):((l.kg||0)>(f.kg||0)||((l.kg||0)===(f.kg||0)&&l.reps>f.reps));
+    rows+='<div class="row"><div class="l">'+esc(ex.name)+'<small>početak: '+one(f)+'</small></div><div class="r'+(better?" up":"")+'">'+one(l)+'</div></div>';
+  });});
+  h+=rows?'<div class="rows">'+rows+'</div>':'<p class="empty">Još nema sačuvanih treninga. Kad završiš prvi, ovdje će za svaku vježbu stajati početna i posljednja najbolja serija.</p>';
+  h+='</section>';
+
+  if(state.sessions.length){
+    h+='<section class="sec"><h2>Istorija</h2><div class="rows">'+state.sessions.slice(-10).reverse().map(function(s){
+      var n=0;Object.keys(s.sets).forEach(function(k){n+=s.sets[k].length;});
+      return '<div class="row"><div class="l">'+esc(dayById(s.day).title)+'<small>'+fmtDate(s.date)+' · '+n+' '+((n%10>=2&&n%10<=4&&(n%100<12||n%100>14))?"serije":"serija")+'</small></div><button type="button" class="del" data-del="'+esc(s.id)+'">Obriši</button></div>';
+    }).join("")+'</div></section>';
+  }
+  h+='<section class="sec"><h2>Rezervna kopija</h2><p class="note">Podaci žive u pregledaču ovog telefona. Povremeno kopiraj rezervnu kopiju i sačuvaj je u bilješkama, pa je ovdje nalijepi ako promijeniš telefon ili obrišeš podatke pregledača.</p>'+
+     '<button type="button" class="btn ghost" id="copyBk">Kopiraj rezervnu kopiju</button><textarea id="bkText" placeholder="Ovdje nalijepi sačuvanu kopiju" aria-label="Rezervna kopija"></textarea><button type="button" class="btn ghost" id="restoreBk">Vrati iz kopije</button></section>';
+  app.innerHTML=h;
+  app.querySelectorAll("[data-count]").forEach(countUp);
+}
+
+/* ---------- routing ---------- */
+function route(){
+  var tab=(location.hash||"").replace("#","");if(tab!=="vodic"&&tab!=="napredak")tab="trening";
+  document.querySelectorAll(".tabs a").forEach(function(a){if(a.dataset.tab===tab)a.setAttribute("aria-current","page");else a.removeAttribute("aria-current");});
+  if(tab==="vodic")viewGuide();else if(tab==="napredak")viewProgress();else viewWorkout();
+  window.scrollTo(0,0);
+}
+window.addEventListener("hashchange",route);
+
+/* ---------- rest timer ---------- */
+var tEnd=0,tTotal=1,tInt=null,tOver=null,wake=null;
+var tEl=document.getElementById("timer"),tT=document.getElementById("timerT"),tW=document.getElementById("timerWhat"),tS=document.getElementById("timerStrip");
+function holdScreen(on){
+  try{
+    if(on&&!wake&&navigator.wakeLock)navigator.wakeLock.request("screen").then(function(l){wake=l;if(tEl.hidden){l.release();wake=null;}},function(){});
+    if(!on&&wake){wake.release();wake=null;}
+  }catch(e){}
+}
+function stopTimer(){clearInterval(tInt);clearTimeout(tOver);tInt=null;tEl.hidden=true;tEl.classList.remove("over","soon");holdScreen(false);}
+function tick(){
+  var left=(tEnd-Date.now())/1000;
+  if(left<=0){clearInterval(tInt);tInt=null;tT.textContent="0:00";tS.style.transform="scaleX(0)";tEl.classList.remove("soon");tEl.classList.add("over");tW.textContent="Odmor je gotov. Sljedeća serija.";
+    try{if(navigator.vibrate)navigator.vibrate([200,100,200]);}catch(e){}
+    beep();tOver=setTimeout(stopTimer,8000);return;}
+  tT.textContent=mmss(left);tS.style.transform="scaleX("+Math.min(1,left/tTotal)+")";
+  tEl.classList.toggle("soon",left<=5);
+}
+function startTimer(sec,label){stopTimer();tTotal=sec;tEnd=Date.now()+sec*1000;tW.textContent="Odmor · "+label;tS.style.transform="scaleX(1)";tEl.hidden=false;holdScreen(true);tick();tInt=setInterval(tick,250);}
+document.getElementById("timerSkip").addEventListener("click",stopTimer);
+document.getElementById("timerAdd").addEventListener("click",function(){
+  armAudio();
+  if(!tInt){clearTimeout(tOver);tEl.classList.remove("over");tEnd=Date.now();tTotal=0;tInt=setInterval(tick,250);tW.textContent="Odmor";holdScreen(true);}
+  tEnd+=30000;tTotal+=30;tick();
+});
+
+/* ---------- events ---------- */
+app.addEventListener("input",function(e){
+  var row=e.target.closest(".set");if(!row||!e.target.dataset.f)return;
+  var day=dayById(state.day||nextDay());var s=setsFor(day.id,EX[row.dataset.ex])[+row.dataset.i];
+  s[e.target.dataset.f]=e.target.value;save();
+});
+app.addEventListener("submit",function(e){
+  if(e.target.id!=="bwForm")return;e.preventDefault();
+  var v=num(document.getElementById("bwInput").value);
+  if(v==null||v<30||v>200){toast("Upiši težinu u kilogramima, na primjer 53,4.");return;}
+  state.bw.push({date:Date.now(),kg:v});save();viewProgress();toast("Težina sačuvana.");
+});
+app.addEventListener("click",function(e){
+  var b=e.target.closest("button");if(!b)return;
+  if(b.dataset.day){state.day=b.dataset.day;save();viewWorkout();return;}
+  if(b.classList.contains("check")){
+    var row=b.closest(".set"),ex=EX[row.dataset.ex],day=dayById(state.day||nextDay());
+    var idx=+row.dataset.i,all=setsFor(day.id,ex),s=all[idx];
+    armAudio();
+    if(s.done){s.done=false;}
+    else{
+      var rIn=row.querySelector('[data-f="reps"]'),kIn=row.querySelector('[data-f="kg"]');
+      var last=lastSets(ex.id);
+      var rv=num(s.reps);
+      if(rv==null||rv<=0){if(last&&num(rIn.placeholder)>0){s.reps=rIn.value=rIn.placeholder;}else{toast(ex.unit==="s"?"Upiši koliko sekundi si izdržala.":"Upiši broj ponavljanja.");rIn.focus();return;}}
+      if(kIn&&num(s.kg)==null){if(last&&last[0].kg!=null){s.kg=kIn.value=kIn.placeholder;}else{toast("Upiši težinu u kg. Ako radiš bez tega, upiši 0.");kIn.focus();return;}}
+      s.done=true;startTimer(ex.rest,ex.name);
+      row.classList.add("just");setTimeout(function(){row.classList.remove("just");},700);
+      var prev=bestSoFar(ex,day.id,idx),kgNow=ex.noKg?0:(num(s.kg)||0),rNow=num(s.reps);
+      if(prev&&!ex.assist&&(kgNow>prev.kg||(kgNow===prev.kg&&rNow>prev.reps))){
+        var bx=b.getBoundingClientRect();burst(bx.left+bx.width/2,bx.top+bx.height/2,36);
+        toast("Novi lični rekord: "+(ex.noKg?"":fmt(kgNow)+" kg × ")+rNow+(ex.unit==="s"?" s":""));
+      }
+    }
+    row.classList.toggle("done",s.done);b.setAttribute("aria-pressed",s.done);
+    var art=row.closest(".ex"),nEl=art.querySelector(".num"),exDone=all.every(function(x){return x.done;});
+    art.classList.toggle("complete",exDone);nEl.textContent=exDone?"✓":nEl.dataset.n;
+    nEl.classList.remove("stamp");if(exDone&&s.done){void nEl.offsetWidth;nEl.classList.add("stamp");}
+    flush();updateProgress();return;
+  }
+  if(b.id==="clearDraft"){
+    if(b.dataset.sure){delete state.drafts[dayById(state.day||nextDay()).id];save();stopTimer();viewWorkout();toast("Unos je poništen.");}
+    else{b.dataset.sure="1";b.textContent="Sigurno? Dodirni još jednom";setTimeout(function(){if(b.isConnected){delete b.dataset.sure;b.textContent="Poništi današnji unos";}},3000);}
+    return;
+  }
+  if(b.id==="finish"){
+    var d=dayById(state.day||nextDay()),out={},n=0;
+    d.ex.forEach(function(ex){var arr=[];setsFor(d.id,ex).forEach(function(s){var r=num(s.reps);if(s.done&&r!=null&&r>0){arr.push({kg:ex.noKg?null:num(s.kg),reps:r});n++;}});if(arr.length)out[ex.id]=arr;});
+    if(!n){toast("Štikliraj bar jednu završenu seriju.");return;}
+    state.sessions.push({id:String(Date.now()),date:Date.now(),day:d.id,sets:out});
+    delete state.drafts[d.id];state.day=null;flush();stopTimer();
+    if(location.hash==="#napredak")route();else location.hash="#napredak";
+    toast("Trening sačuvan. Bravo!");
+    burst(window.innerWidth/2,window.innerHeight*.35,110);return;
+  }
+  if(b.dataset.del){
+    if(b.dataset.sure){state.sessions=state.sessions.filter(function(s){return s.id!==b.dataset.del;});save();viewProgress();toast("Trening obrisan.");}
+    else{b.dataset.sure="1";b.textContent="Sigurno?";setTimeout(function(){if(b.isConnected){delete b.dataset.sure;b.textContent="Obriši";}},3000);}
+    return;
+  }
+  if(b.id==="copyBk"){
+    var txt=JSON.stringify({sessions:state.sessions,bw:state.bw}),ta=document.getElementById("bkText");
+    function fallback(){ta.value=txt;ta.focus();ta.select();toast("Kopija je u polju ispod. Označi je i kopiraj.");}
+    try{navigator.clipboard.writeText(txt).then(function(){toast("Kopirano. Nalijepi u bilješke.");},fallback);}catch(err){fallback();}
+    return;
+  }
+  if(b.id==="restoreBk"){
+    var c=null;
+    try{c=clean(JSON.parse(document.getElementById("bkText").value));}catch(err){c=null;}
+    if(!c||!(c.sessions.length||c.bw.length)){toast("Kopija nije ispravna. Nalijepi cijeli tekst koji si sačuvala.");return;}
+    if((state.sessions.length||state.bw.length)&&!b.dataset.sure){
+      b.dataset.sure="1";b.textContent="Zamijeni sadašnje podatke? Dodirni još jednom";
+      setTimeout(function(){if(b.isConnected){delete b.dataset.sure;b.textContent="Vrati iz kopije";}},4000);return;
+    }
+    state.sessions=c.sessions;state.bw=c.bw;save();viewProgress();toast("Podaci su vraćeni.");
+  }
+});
+
+route();
+})();
+</script>
