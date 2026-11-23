@@ -1,0 +1,167 @@
+<!doctype html>
+<meta charset="utf-8">
+<style>html,body{margin:0;background:#ECEAF2}canvas{display:block}</style>
+<canvas id="c"></canvas>
+<script src="fig.gen.js"></script>
+<script type="importmap">{"imports":{"three":"./node_modules/three/build/three.module.js","three/addons/":"./node_modules/three/examples/jsm/"}}</script>
+<script type="module">
+// Offline renderer: poses a rigged character from the app's exercise poses (FIG.solve) and draws one frame at a time.
+import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+
+const q = new URLSearchParams(location.search), W = +(q.get("w") || 480), H = +(q.get("h") || 600);
+const canvas = document.getElementById("c");
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(+(q.get("dpr") || 2)); renderer.setSize(W, H);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+
+const scene = new THREE.Scene(); scene.background = new THREE.Color("#ECEAF2");
+const camera = new THREE.PerspectiveCamera(24, W / H, 0.1, 50);
+scene.add(new THREE.HemisphereLight(0xffffff, 0xb9b4c8, 1.5));
+const sun = new THREE.DirectionalLight(0xffffff, 2.4); sun.position.set(2.2, 5, 3.6); sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -2.6, right: 2.6, top: 2.8, bottom: -1, near: 0.5, far: 14 }); sun.shadow.bias = -0.0004; sun.shadow.radius = 5;
+scene.add(sun, sun.target);
+const fill = new THREE.DirectionalLight(0xffe9f0, 0.7); fill.position.set(-3, 2, 2); scene.add(fill);
+const disc = new THREE.Mesh(new THREE.CircleGeometry(1.45, 64), new THREE.MeshStandardMaterial({ color: "#E1DEEA", roughness: 1 }));
+disc.rotation.x = -Math.PI / 2; disc.receiveShadow = true; scene.add(disc);
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.ShadowMaterial({ opacity: 0.16 }));
+floor.rotation.x = -Math.PI / 2; floor.position.y = -0.001; floor.receiveShadow = true; scene.add(floor);
+
+const MAT = {
+  gear: new THREE.MeshStandardMaterial({ color: "#B4AEC6", roughness: 0.75 }),
+  pad: new THREE.MeshStandardMaterial({ color: "#3A3550", roughness: 0.9 }),
+  metal: new THREE.MeshStandardMaterial({ color: "#8C88A0", roughness: 0.35, metalness: 0.7 }),
+  weight: new THREE.MeshStandardMaterial({ color: "#A81E5B", roughness: 0.55 }),
+};
+const S = 1.68 / 141.5, G = 151;            // rig units -> metres; rig ground line
+const V = (v) => new THREE.Vector3((v[2] || 0) * S, (G - v[1]) * S, (v[0] - 100) * S);   // rig point -> world
+const D = (v) => new THREE.Vector3(v[2] || 0, -v[1], v[0]).normalize();                   // rig direction -> world
+const sub = (a, b) => [a[0] - b[0], a[1] - b[1], (a[2] || 0) - (b[2] || 0)];
+
+let model, bones = {}, rest = new Map(), hipsRestQ, gear = new THREE.Group(); scene.add(gear);
+const gltf = await new GLTFLoader().loadAsync("models/" + (q.get("model") || "Michelle.glb"));
+model = gltf.scene; scene.add(model);
+model.updateWorldMatrix(true, true);
+{ // normalise height to 1.68 m, feet on the floor
+  const box = new THREE.Box3().setFromObject(model); model.scale.multiplyScalar(1.68 / (box.max.y - box.min.y));
+  model.updateWorldMatrix(true, true); const b2 = new THREE.Box3().setFromObject(model); model.position.y -= b2.min.y; model.updateWorldMatrix(true, true);
+}
+model.traverse((o) => { if (o.isBone) { bones[o.name.replace(/^mixamorig:?/, "")] = o; rest.set(o, { q: o.quaternion.clone(), p: o.position.clone() }); }
+  if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; } });
+hipsRestQ = bones.Hips.getWorldQuaternion(new THREE.Quaternion());
+const SIDE = { 1: "Left", "-1": "Right" };
+const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion();
+const wpos = (o) => o.getWorldPosition(new THREE.Vector3());
+function setWorldQuat(bone, qw) { bone.parent.getWorldQuaternion(_q2).invert(); bone.quaternion.copy(_q2.multiply(qw)); bone.updateWorldMatrix(false, true); }
+function aim(bone, child, dir) {                       // rotate `bone` so that it points from itself to `child` along `dir`
+  bone.updateWorldMatrix(true, true);
+  _a.copy(wpos(child)).sub(wpos(bone)).normalize(); _q.setFromUnitVectors(_a, dir);
+  setWorldQuat(bone, _q.multiply(bone.getWorldQuaternion(new THREE.Quaternion())));
+}
+function curl(side, amount) {                          // close the fingers around a handle
+  for (const f of ["Index", "Middle", "Ring", "Pinky"]) for (const n of [1, 2, 3]) {
+    const b = bones[side + "Hand" + f + n]; if (b) b.rotateZ((side === "Left" ? -1 : 1) * amount);
+  }
+  for (const n of [1, 2]) { const b = bones[side + "HandThumb" + n]; if (b) b.rotateX(0.35); }
+}
+function cyl(a, b, r, mat, seg = 20) { const l = a.distanceTo(b), m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, l, seg), mat);
+  m.position.copy(a).add(b).multiplyScalar(0.5); m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), _b.copy(b).sub(a).normalize()); m.castShadow = m.receiveShadow = true; gear.add(m); return m; }
+function slab(a, b, halfX, thick, mat, cx = 0) {       // flat board between two points in the side plane, 2*halfX wide
+  const l = a.distanceTo(b), m = new THREE.Mesh(new THREE.BoxGeometry(halfX * 2, l, thick), mat);
+  m.position.copy(a).add(b).multiplyScalar(0.5); m.position.x = cx; m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), _b.copy(b).sub(a).normalize());
+  m.castShadow = m.receiveShadow = true; gear.add(m); return m; }
+function armIK(n, tgt, pole) {
+  const A = bones[n + "Arm"], F = bones[n + "ForeArm"], Hd = bones[n + "Hand"]; model.updateWorldMatrix(true, true);
+  const a = wpos(A), l1 = a.distanceTo(wpos(F)), l2 = wpos(F).distanceTo(wpos(Hd)) + grip(n).distanceTo(wpos(Hd)) * 0.9;
+  const ab = tgt.clone().sub(a), d = ab.length(), dd = THREE.MathUtils.clamp(d, Math.abs(l1 - l2) + 0.01, l1 + l2 - 0.005), ax = ab.clone().normalize();
+  const c = (l1 * l1 + dd * dd - l2 * l2) / (2 * l1 * dd), sn = Math.sqrt(Math.max(0, 1 - c * c));
+  const pp = pole.clone().addScaledVector(ax, -pole.dot(ax)); if (pp.lengthSq() < 1e-6) pp.set(0, -1, 0); pp.normalize();
+  const el = a.clone().addScaledVector(ax, l1 * c).addScaledVector(pp, l1 * sn);
+  aim(A, F, el.clone().sub(a).normalize()); aim(F, Hd, tgt.clone().sub(el).normalize());
+}
+function grip(side) { const h = bones[side + "Hand"], m = bones[side + "HandMiddle1"]; return wpos(h).lerp(wpos(m), 0.85); }
+
+function pose(id, k) {
+  const sp = FIGS[id], o = FIG.solve(sp, k);
+  for (const [b, r] of rest) { b.quaternion.copy(r.q); b.position.copy(r.p); }
+  // torso: hips take the lean of the hip->shoulder line
+  const up = D(o.u), X = new THREE.Vector3(1, 0, 0), Z = new THREE.Vector3().crossVectors(X, up).normalize();
+  const Rt = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(X, up, Z));
+  const place = (p) => { bones.Hips.position.copy(bones.Hips.parent.worldToLocal(p.clone())); };
+  model.updateWorldMatrix(true, true); place(V(o.hip)); setWorldQuat(bones.Hips, Rt.clone().multiply(hipsRestQ));
+  const limbs = () => { for (const s of [1, -1]) { const n = SIDE[s], j = o.S[s];
+    aim(bones[n + "UpLeg"], bones[n + "Leg"], D(sub(j.kn, j.hj))); aim(bones[n + "Leg"], bones[n + "Foot"], D(sub(j.foot, j.kn)));
+    if (bones[n + "ToeBase"]) aim(bones[n + "Foot"], bones[n + "ToeBase"], D(sub(j.toe, j.foot)));
+    aim(bones[n + "Arm"], bones[n + "ForeArm"], D(sub(j.el, j.sj))); aim(bones[n + "ForeArm"], bones[n + "Hand"], D(sub(j.hand, j.el))); } };
+  limbs();
+  // anchor: keep the supporting point where the rig has it (model proportions differ from the rig's)
+  const A = sp.a, anchor = sp.anchor || (A.foot[1] >= 136 ? "foot" : "hip");
+  if (anchor !== "hip") {
+    const bone = anchor === "hand" ? bones.LeftHand : bones.LeftFoot, want = V(anchor === "hand" ? o.S[1].hand : o.S[1].foot);
+    if (anchor === "foot") want.y = Math.max(want.y, 0) + footH;
+    const d = want.sub(wpos(bone)); d.x = 0; place(wpos(bones.Hips).add(d)); bones.Hips.updateWorldMatrix(false, true);
+  }
+  const rb = (sp.props || []).find((p) => p[0] === "bar" && p[1] !== "hand");
+  if (rb) { model.updateWorldMatrix(true, true); const c = barCentre(rb), half = rb[1] === "sh" ? 0.34 : 0.3;
+    for (const s of [1, -1]) { const j = o.S[s], mid = [(j.sj[0] + j.hand[0]) / 2, (j.sj[1] + j.hand[1]) / 2, (j.sj[2] + j.hand[2]) / 2];
+      armIK(SIDE[s], c.clone().setX(s * half), D(sub(j.el, mid)).add(new THREE.Vector3(0, -0.6, rb[1] === "sh" ? -0.5 : 0))); } }
+  if (id === "pushup" || id === "plank") { model.updateWorldMatrix(true, true);   // palms on the floor
+    for (const s of [1, -1]) { const t = V(o.S[s].hand); t.y = 0.03; armIK(SIDE[s], t, new THREE.Vector3(s * 0.5, 0.2, -1)); } }
+  const holds = (sp.props || []).some((p) => ["bar", "db", "db1", "handle"].includes(p[0]) && (p[1] === "hand" || p[0] === "handle")) || !!rb;
+  if (holds) { curl("Left", 1.15); curl("Right", sp.props.some((p) => p[0] === "db1") && id !== "ohtri" ? 0.25 : 1.15); }
+  model.updateWorldMatrix(true, true);
+  return { sp, o };
+}
+function barCentre(p) { const c = (p[1] === "sh" ? wpos(bones.LeftArm).add(wpos(bones.RightArm)).multiplyScalar(0.5) : wpos(bones.Hips)).add(new THREE.Vector3(0, -p[3] * S, p[2] * S));
+  if (p[1] === "sh") c.y += 0.02; return c; }
+let footH = 0.09;
+{ model.updateWorldMatrix(true, true); footH = wpos(bones.LeftFoot).y; }
+
+function props(sp, o) {
+  for (const m of [...gear.children]) { m.geometry.dispose(); gear.remove(m); }
+  const gl = grip("Left"), gr = grip("Right"), gm = gl.clone().add(gr).multiplyScalar(0.5);
+  const J = { hand: gm, hip: wpos(bones.Hips), sh: wpos(bones.LeftArm).add(wpos(bones.RightArm)).multiplyScalar(0.5),
+    foot: wpos(bones.LeftFoot).add(wpos(bones.RightFoot)).multiplyScalar(0.5), kn: wpos(bones.LeftLeg).add(wpos(bones.RightLeg)).multiplyScalar(0.5) };
+  const off = (dx, dy) => new THREE.Vector3(0, -dy * S, dx * S);
+  for (const p of sp.props || []) {
+    const t = p[0];
+    if (t === "rect" && sp === FIGS.calf) continue;
+    if (t === "rect") { const zc = (p[5] || 0) * S, zh = (p[6] || 15) * S, m = new THREE.Mesh(new THREE.BoxGeometry(zh * 2, p[4] * S, p[3] * S), p[4] <= 8 ? MAT.pad : MAT.gear);
+      m.position.set(zc, (G - p[2] - p[4] / 2) * S, (p[1] + p[3] / 2 - 100) * S); m.castShadow = m.receiveShadow = true; gear.add(m); }
+    else if (t === "seg") { const a = V([p[1], p[2], p[6] || 0]), b = V([p[3], p[4], p[6] || 0]);
+      if (p[5] >= 6) slab(a, b, (p[7] || 13) * S, 0.05, MAT.pad, (p[6] || 0) * S); else cyl(a, b, 0.022, MAT.metal); }
+    else if (t === "cable") cyl(V([p[1], p[2], 0]), J[p[3]].clone(), 0.006, MAT.metal, 8);
+    else if (t === "handle") { const e = (p[2] || 0) * S + 0.04; cyl(gl.clone().add(new THREE.Vector3(e, 0, 0)), gr.clone().add(new THREE.Vector3(-e, 0, 0)), 0.014, MAT.metal); }
+    else if (t === "pad") { const a = wpos(bones.LeftFoot).add(off(p[2], p[3])), b = wpos(bones.RightFoot).add(off(p[2], p[3])); a.x += 0.05; b.x -= 0.05; cyl(a, b, p[4] * S * 1.3, MAT.pad); }
+    else if (t === "padz") for (const n of ["Left", "Right"]) { const c = wpos(bones[n + "Leg"]), sx = n === "Left" ? 1 : -1; cyl(c.clone().add(new THREE.Vector3(sx * 0.07, 0, 0)), c.clone().add(new THREE.Vector3(sx * 0.13, 0, 0)), p[2] * S * 1.6, MAT.pad); }
+    else if (t === "segj") { const c = J[p[1]].clone(); if (p[1] === "foot") c.add(J.foot.clone().sub(J.kn).normalize().multiplyScalar(0.13)); slab(c.clone().add(off(p[2], p[3])), c.clone().add(off(p[4], p[5])), 0.24, 0.04, MAT.gear); }
+    else if (t === "bar") { const c = p[1] === "hand" ? gm.clone().add(off(p[2], p[3])) : barCentre(p);
+      cyl(c.clone().setX(-0.8), c.clone().setX(0.8), 0.014, MAT.metal);
+      for (const sx of [1, -1]) { cyl(c.clone().setX(sx * 0.56), c.clone().setX(sx * 0.6), 0.2, MAT.weight, 40); cyl(c.clone().setX(sx * 0.61), c.clone().setX(sx * 0.65), 0.2, MAT.weight, 40); cyl(c.clone().setX(sx * 0.65), c.clone().setX(sx * 0.69), 0.03, MAT.metal); } }
+    else if (t === "db" || t === "db1") { const ax = p[2] === "x" ? new THREE.Vector3(0, 0, 1) : p[2] === "y" ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0);
+      const pts = t === "db1" ? [sp.a.hz < 5 ? gm : gl] : [gl, gr];
+      for (const c of pts) { const a = c.clone().addScaledVector(ax, 0.1), b = c.clone().addScaledVector(ax, -0.1); cyl(a, b, 0.013, MAT.metal);
+        cyl(a, c.clone().addScaledVector(ax, 0.055), 0.05, MAT.weight, 24); cyl(b, c.clone().addScaledVector(ax, -0.055), 0.05, MAT.weight, 24); } }
+  }
+}
+// camera: three-quarter front view by default; side-on where equipment or the floor would hide the movement
+const AZ = { legpress: 1.45, cablerow: 1.3, plank: 1.25, pushup: 1.25, hyper: 1.2, legraise: 1.15, hipthrust: 1.05, legcurl: 1.05, legext: 1.05, dbrow: 0.95, pullup: 0.8 };
+function frame(id) {
+  const sp = FIGS[id], box = new THREE.Box3();
+  for (const k of [0, 1]) { const o = FIG.solve(sp, k); box.expandByPoint(V(o.hip)); box.expandByPoint(V(o.shm).add(D(o.u).multiplyScalar(0.3)));
+    for (const s of [1, -1]) for (const n of ["hand", "foot", "kn", "el"]) box.expandByPoint(V(o.S[s][n])); }
+  const c = box.getCenter(new THREE.Vector3()), size = box.getSize(new THREE.Vector3());
+  const azs = AZ[id] == null ? 0.62 : AZ[id]; size.z = Math.max(size.z * Math.sin(azs), size.z * 0.55);
+  const tgt = new THREE.Vector3(0, THREE.MathUtils.clamp(c.y, 0.55, 1.0), c.z), dist = Math.max(3.9, 2.0 + Math.max(size.y * 1.65, size.z * 2.05));
+  const az = AZ[id] == null ? 0.62 : AZ[id], dir = new THREE.Vector3(Math.sin(az), 0.3, Math.cos(az)).normalize();
+  camera.position.copy(tgt).addScaledVector(dir, dist * (AZ[id] > 1 ? 1.14 : 1)); camera.lookAt(tgt); disc.position.set(0, 0, c.z); sun.target.position.set(0, 0, c.z); sun.position.set(2.2, 5, 3.6 + c.z);
+}
+window.ids = Object.keys(FIGS);
+window.total = (id) => { const m = FIGS[id].tm; return m[0] + m[1] + m[2] + m[3]; };
+window.draw = (id, k) => { frame(id); const r = pose(id, k); props(r.sp, r.o); renderer.render(scene, camera); };
+window.drawAt = (id, sec) => window.draw(id, FIG.at(FIGS[id], sec).k);
+window.restPose = () => { for (const [b, r] of rest) { b.quaternion.copy(r.q); b.position.copy(r.p); } for (const m of [...gear.children]) gear.remove(m);
+  camera.position.set(2.2, 1.4, 5); camera.lookAt(0, 0.9, 0); renderer.render(scene, camera); };
+window.ready = true;
+</script>

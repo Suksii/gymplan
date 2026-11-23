@@ -11,6 +11,8 @@ self.addEventListener("activate", function (e) {
 });
 self.addEventListener("fetch", function (e) {
   if (e.request.method !== "GET") return;
+  // video is fetched in byte ranges, which the cache cannot store: leave it to the browser (offline the app falls back to the drawing)
+  if (e.request.headers.has("range") || /\.mp4(\?|$)/.test(e.request.url)) return;
   e.respondWith(
     fetch(e.request).then(function (res) {
       if (res && (res.ok || res.type === "opaque")) { var copy = res.clone(); caches.open(CACHE).then(function (c) { c.put(e.request, copy); }); }

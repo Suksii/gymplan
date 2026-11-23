@@ -4,3 +4,7 @@ public/sw.js
 node_modules
 .DS_Store
 video-ref/
+tools/3d/node_modules/
+tools/3d/out/
+tools/3d/models/
+tools/3d/fig.gen.js

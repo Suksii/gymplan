@@ -93,7 +93,7 @@ main{padding-block:10px calc(var(--navh) + 120px);display:flex;flex-direction:co
 .ex{background:var(--surface);border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:14px;box-shadow:var(--shadow)}
 .exhead{display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;align-items:center}
 .thumb{position:relative;width:78px;height:78px;border-radius:18px;background:var(--fg-bg);flex:none}
-.thumb svg{width:100%;height:100%;display:block;border-radius:18px}
+.thumb svg,.thumb img{width:100%;height:100%;display:block;border-radius:18px;object-fit:cover;object-position:50% 35%}
 .num{position:absolute;left:-6px;top:-6px;min-width:26px;height:26px;padding:0 6px;border-radius:13px;background:var(--accent);color:var(--accent-ink);border:2px solid var(--surface);font-family:var(--display);font-weight:700;font-size:1rem;line-height:22px;text-align:center;font-variant-numeric:tabular-nums;transition:background-color .25s,color .25s}
 .ex.complete .num{background:var(--ok);color:var(--ok-ink)}
 .exhead h2{font-size:1.5rem}
@@ -142,6 +142,7 @@ main{padding-block:10px calc(var(--navh) + 120px);display:flex;flex-direction:co
 .errs dd::before{content:"\2713\00a0";color:var(--ok);font-weight:600}
 .fig{background:var(--fg-bg);border-radius:16px;overflow:hidden}
 .fig svg{display:block;width:100%;height:auto;max-height:320px}
+.fig video{display:block;width:100%;aspect-ratio:4/5;object-fit:cover;background:var(--fg-bg)}
 .figcap{display:flex;justify-content:center;align-items:center;padding:8px 10px;font-family:var(--display);font-weight:700;font-size:1.1rem;letter-spacing:.04em;text-transform:uppercase;color:var(--accent-ink);background:var(--accent);min-height:2.3em}
 .vid{display:flex;flex-direction:column;gap:6px}
 .vidbtn{position:relative;display:block;width:100%;aspect-ratio:16/9;padding:0;border:0;border-radius:16px;overflow:hidden;background:var(--hero)}
@@ -721,11 +722,11 @@ var FIG=(function(){
     gear:"var(--fg-gear)",gearT:"var(--fg-gear-top)",gearD:"var(--fg-gear-dark)",metal:"var(--fg-metal)",w:"var(--fg-weight)",w2:"var(--fg-weight2)"};
 
   /* inner SVG markup for exercise spec `sp` at blend k (0 = pose a, 1 = pose b) */
-  function draw(sp,k){
+  /* solved 3D joints for blend k: used by the SVG drawing and by the offline 3D renderer */
+  function solve(sp,k){
     var L={},n;for(n in BASE)L[n]=(sp.len&&sp.len[n])||BASE[n];
     var A=sp.a,B=sp.b,hip2=lerp(A.hip,B.hip,k),t=(A.t+(B.t-A.t)*k)*Math.PI/180,u=[Math.sin(t),-Math.cos(t),0],fw=[Math.cos(t),Math.sin(t),0];
-    var hip=[hip2[0],hip2[1],0],shm=add(hip,u,L.to),Q=[],S={};
-    function put(d,h){Q.push([d,h]);}
+    var hip=[hip2[0],hip2[1],0],shm=add(hip,u,L.to),S={};
     function tgt(pose,key,far,zk,zdef){
       var p=(far&&pose[key+"2"])||pose[key],z=(far&&pose[zk+"2"]!=null)?pose[zk+"2"]:(pose[zk]!=null?pose[zk]:zdef);
       return [p[0],p[1],(far?-1:1)*z];
@@ -741,6 +742,14 @@ var FIG=(function(){
       var ep=bend2(sj,hand,L.ua,L.fa,eDir),kp=bend2(hj,foot,L.th,L.sh,kDir);ep[2]=s*(sp.eOut||0);kp[2]=s*(sp.kOut||0);
       var arm=ik3(sj,hand,L.ua,L.fa,ep),leg=ik3(hj,foot,L.th,L.sh,kp),toe3=add(leg.end,[toe[0],toe[1],s*1.5]);
       S[s]={sj:sj,hj:hj,el:arm.mid,hand:arm.end,kn:leg.mid,foot:leg.end,toe:toe3};
+    });
+    return {L:L,t:t,u:u,fw:fw,hip:hip,shm:shm,S:S};
+  }
+  function draw(sp,k){
+    var o=solve(sp,k),L=o.L,t=o.t,u=o.u,fw=o.fw,hip=o.hip,shm=o.shm,S=o.S,Q=[];
+    function put(d,h){Q.push([d,h]);}
+    [1,-1].forEach(function(s){
+      var far=s<0,sj=S[s].sj,hj=S[s].hj,arm={mid:S[s].el,end:S[s].hand},leg={mid:S[s].kn,end:S[s].foot},toe3=S[s].toe;
       var pS=P(sj),pE=P(arm.mid),pH=P(arm.end),pJ=P(hj),pK=P(leg.mid),pF=P(leg.end),pT=P(toe3),sk=far?C.skin2:C.skin,lg=far?C.leg2:C.leg,tp=far?C.top2:C.top;
       put((pJ[2]+pK[2])/2,cap(pJ,pK,7.2,5.2,lg,true));
       put((pK[2]+pF[2])/2,cap(pK,pF,5,3.3,lg,true));
@@ -803,7 +812,7 @@ var FIG=(function(){
     if(x<m[0]+m[1]+m[2])return {k:1-ease((x-m[0]-m[1])/m[2]),ph:1};
     return {k:0,ph:1};
   }
-  return {draw:draw,at:at,view:"24 -36 152 206"};
+  return {draw:draw,solve:solve,at:at,view:"24 -36 152 206"};
 })();
 
 /* ---------- "how to" template: key cue, video, setup, execution, tempo, feel, mistakes, swap ---------- */
@@ -830,25 +839,39 @@ function howHtml(ex){
     blk("Video tehnike",videoHtml(ex))+
     '</div></div></div></details>';
 }
+/* The 3D clips (public/anim/<id>.mp4 + .jpg) exist only in the installed web app; elsewhere the drawn figure is used. */
+function figSvg(id,name){return '<svg viewBox="'+FIG.view+'" role="img" aria-label="Animacija vježbe: '+esc(name)+'"><g>'+FIG.draw(FIGS[id],0)+'</g></svg>';}
 function figHtml(ex){
   var sp=FIGS[ex.id];if(!sp)return "";
-  return '<div class="fig" data-fig="'+ex.id+'"><svg viewBox="'+FIG.view+'" role="img" aria-label="Animacija vježbe: '+esc(ex.name)+'"><g>'+FIG.draw(sp,0)+'</g></svg><div class="figcap"><span class="phase">'+esc(sp.cap[0])+'</span></div></div>';
+  var media=EMBED?'<video class="figv" muted loop playsinline preload="none" poster="anim/'+ex.id+'.jpg" src="anim/'+ex.id+'.mp4" data-name="'+esc(ex.name)+'" aria-label="Animacija vježbe: '+esc(ex.name)+'"></video>':figSvg(ex.id,ex.name);
+  return '<div class="fig" data-fig="'+ex.id+'">'+media+'<div class="figcap"><span class="phase">'+esc(sp.cap[0])+'</span></div></div>';
 }
-/* one animation loop, alive only while some accordion is open */
+/* one loop, alive only while some accordion is open: drives the drawn figure, or follows the clip to show the phase */
 var figRaf=null;
 function figTick(ts){
   var live=app.querySelectorAll(".acc.on .fig");
   if(!live.length){figRaf=null;return;}
+  var moving=false;
   live.forEach(function(el){
     var sp=FIGS[el.dataset.fig];if(!sp)return;
-    if(!el._t0)el._t0=ts;
-    var st=calm?{k:1,ph:0}:FIG.at(sp,(ts-el._t0)/1000);
-    el.querySelector("g").innerHTML=FIG.draw(sp,st.k);
+    var v=el.querySelector("video"),st;
+    if(v){st=FIG.at(sp,v.currentTime||0);moving=true;}
+    else{if(!el._t0)el._t0=ts;st=calm?{k:1,ph:0}:FIG.at(sp,(ts-el._t0)/1000);el.querySelector("g").innerHTML=FIG.draw(sp,st.k);if(!calm)moving=true;}
     var c=el.querySelector(".phase");if(c.textContent!==sp.cap[st.ph])c.textContent=sp.cap[st.ph];
   });
-  figRaf=calm?null:requestAnimationFrame(figTick);
+  figRaf=moving?requestAnimationFrame(figTick):null;
 }
 function figStart(){if(!figRaf)figRaf=requestAnimationFrame(figTick);}
+function figOpen(d){
+  d.querySelectorAll(".fig").forEach(function(el){
+    el._t0=0;var v=el.querySelector("video");if(!v)return;
+    v.onerror=function(){v.outerHTML=figSvg(el.dataset.fig,v.dataset.name||"");figStart();};
+    if(calm){v.controls=true;return;}
+    try{var p=v.play();if(p&&p.catch)p.catch(function(){v.controls=true;});}catch(e){v.controls=true;}
+  });
+  figStart();
+}
+function figClose(d){d.querySelectorAll("video.figv").forEach(function(v){try{v.pause();}catch(e){}});}
 function stopVideos(root){root.querySelectorAll("iframe").forEach(function(f){if(f._btn)f.replaceWith(f._btn);else f.remove();});}
 
 /* ---------- views ---------- */
@@ -870,7 +893,7 @@ function viewWorkout(){
     var sets=setsFor(day.id,ex); var last=lastSets(ex.id)||[];
     var range=ex.lo+"–"+ex.hi+(ex.unit==="s"?" s":"")+(ex.per?" "+ex.per:"");
     var allDone=sets.every(function(s){return s.done;});
-    h+='<article class="ex'+(allDone?" complete":"")+'" style="--i:'+i+'"><div class="exhead"><div class="thumb">'+(FIGS[ex.id]?'<svg viewBox="'+FIG.view+'" aria-hidden="true">'+FIG.draw(FIGS[ex.id],.5)+'</svg>':"")+
+    h+='<article class="ex'+(allDone?" complete":"")+'" style="--i:'+i+'"><div class="exhead"><div class="thumb">'+(FIGS[ex.id]?(EMBED?'<img src="anim/'+ex.id+'.jpg" alt="" loading="lazy" data-fig="'+ex.id+'">':'<svg viewBox="'+FIG.view+'" aria-hidden="true">'+FIG.draw(FIGS[ex.id],.5)+'</svg>'):"")+
        '<div class="num" data-n="'+(i+1)+'">'+(allDone?"✓":i+1)+'</div></div><div><h2>'+esc(ex.name)+'</h2><div class="eng">'+esc(ex.eng)+' · '+esc(ex.m)+'</div>'+
        '<div class="pills"><span class="pill strong">'+ex.sets+' × '+range+'</span><span class="pill">odmor '+restLabel(ex.rest)+'</span></div></div></div>';
     h+='<div class="hint">'+hintFor(ex)+'</div><div class="sethead" aria-hidden="true"><span></span><span>'+(ex.noKg?"Teret":"Težina")+'</span><span>'+(ex.unit==="s"?"Trajanje":"Ponavljanja")+'</span><span></span></div><div class="sets">';
@@ -1050,6 +1073,9 @@ app.addEventListener("submit",function(e){
   if(v==null||v<30||v>200){toast("Upiši težinu u kilogramima, na primjer 53,4.");return;}
   state.bw.push({date:Date.now(),kg:v});save();viewProgress();toast("Težina sačuvana.");
 });
+app.addEventListener("error",function(e){
+  var t=e.target;if(t&&t.tagName==="IMG"&&t.dataset.fig&&FIGS[t.dataset.fig])t.outerHTML='<svg viewBox="'+FIG.view+'" aria-hidden="true">'+FIG.draw(FIGS[t.dataset.fig],.5)+'</svg>';
+},true);
 /* accordion: animate open and close (details stays the semantic element) */
 app.addEventListener("click",function(e){
   var sm=e.target.closest("summary");if(!sm)return;
@@ -1057,8 +1083,8 @@ app.addEventListener("click",function(e){
   e.preventDefault();clearTimeout(d._t);
   if(d.classList.contains("on")){
     d.classList.remove("on");
-    d._t=setTimeout(function(){if(!d.classList.contains("on")){d.open=false;stopVideos(d);}},400);
-  }else{d.open=true;void d.offsetHeight;d.classList.add("on");d.querySelectorAll(".fig").forEach(function(el){el._t0=0;});figStart();}
+    d._t=setTimeout(function(){if(!d.classList.contains("on")){d.open=false;stopVideos(d);figClose(d);}},400);
+  }else{d.open=true;void d.offsetHeight;d.classList.add("on");figOpen(d);}
 });
 app.addEventListener("click",function(e){
   var b=e.target.closest("button");if(!b)return;
