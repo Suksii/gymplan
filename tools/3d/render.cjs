@@ -25,7 +25,7 @@ const server = http.createServer((req, res) => {
   await new Promise((r) => server.listen(0, "127.0.0.1", r));
   const base = "http://127.0.0.1:" + server.address().port;
   const br = await chromium.launch({ executablePath: EXE, args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] });
-  const sheet = mode === "sheet", w = sheet ? 360 : W, h = sheet ? 450 : H;
+  const sheet = mode !== "video", w = sheet ? 360 : W, h = sheet ? 450 : H;
   const p = await br.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: 1 });
   p.on("pageerror", (e) => console.error("page error:", String(e))); p.on("console", (m) => { if (m.type() === "error") console.error("console:", m.text()); });
   await p.goto(`${base}/render.html?w=${w}&h=${h}&dpr=${sheet ? 1 : 2}&model=${process.env.MODEL || "Xbot.glb"}`);
@@ -34,6 +34,7 @@ const server = http.createServer((req, res) => {
   const out = path.join(here, "out"); fs.mkdirSync(out, { recursive: true });
   const shot = async (file) => fs.writeFileSync(file, Buffer.from((await p.evaluate(() => document.getElementById("c").toDataURL("image/png"))).split(",")[1], "base64"));
 
+  if (mode === "rest") { await p.evaluate("window.restPose()"); await shot(path.join(out, "rest.png")); console.log(JSON.stringify(await p.evaluate("window.info && window.info()"))); await br.close(); server.close(); return; }
   if (sheet) {
     const files = [];
     if (!only) { await p.evaluate("window.restPose()"); await shot(path.join(out, "rest.png")); }

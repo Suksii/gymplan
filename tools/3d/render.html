@@ -50,6 +50,11 @@ const model = gltf.scene; scene.add(model); model.updateWorldMatrix(true, true);
 }
 model.traverse((o) => { if (o.isBone) { bones[o.name.replace(/^mixamorig:?/, "")] = o; rest.set(o, { q: o.quaternion.clone(), p: o.position.clone() }); }
   if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; } });
+// Models exported from Blender mark every material as alpha-blended, which breaks depth sorting (skin drawn over clothes, teeth over the face).
+// Solid parts are made opaque; hair, brows and lashes are cut out by their alpha instead of blended.
+model.traverse((o) => { if (!o.isMesh || /xbot/i.test(MODEL)) return; const m = o.material, cut = /hair|ponytail|braid|bob|brow|lash/i.test(m.name + o.name);
+  m.transparent = false; m.depthWrite = true; m.alphaTest = cut ? 0.35 : 0; m.side = cut || /suit|shoe/i.test(m.name) ? THREE.DoubleSide : THREE.FrontSide; m.metalness = 0; m.roughness = Math.max(m.roughness, 0.55);
+  if (/body$/i.test(m.name)) m.color.setRGB(1.0, 0.9, 0.84); m.needsUpdate = true; });
 const wpos = (o) => o.getWorldPosition(new THREE.Vector3());
 const wquat = (o) => o.getWorldQuaternion(new THREE.Quaternion());
 const hipsRestQ = wquat(bones.Hips);
@@ -223,5 +228,6 @@ window.dbg = () => { const r = { head: wpos(bones.Head).toArray().map((x) => +x.
     r.meshes.push({ name: o.name, verts: si.count, headVerts: cnt["mixamorig:Head"] || cnt["mixamorigHead"] || 0, neck: cnt["mixamorig:Neck"] || cnt["mixamorigNeck"] || 0, box: b.isEmpty() ? null : [b.min.toArray().map((x) => +x.toFixed(3)), b.max.toArray().map((x) => +x.toFixed(3))], names: Object.keys(cnt).slice(0, 4) }); });
   return r; };
 window.headShot = (x = 0.9, z = 1.3) => { window.restPose(); camera.position.set(x, 1.75, z); camera.lookAt(0, 1.55, 0); renderer.render(scene, camera); };
+window.info = () => { const r = []; model.traverse((o) => { if (!o.isMesh) return; const m = o.material, g = o.geometry; r.push({ n: o.name, skinned: !!o.isSkinnedMesh, verts: g.attributes.position.count, mat: m.name, transparent: m.transparent, alphaTest: m.alphaTest, alphaMode: m.userData && m.userData.gltfExtensions, side: m.side, map: !!m.map, depthWrite: m.depthWrite }); }); return r; };
 window.ready = true;
 </script>
