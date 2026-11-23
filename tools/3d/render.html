@@ -65,7 +65,9 @@ const LIFT = { calf: 0.1 }; let LIFTY = 0;                                      
 const V = (v) => new THREE.Vector3((v[2] || 0) * S, (145 - v[1]) * S + footH + LIFTY, (v[0] - 100) * S);    // rig point -> world
 const Yw = (y) => Math.max(0, (145 - y) * S + footH);
 // hand axes in the bone's own frame (rest pose is a T-pose: palms down, thumbs forward)
-const HAND = {}; for (const n of ["Left", "Right"]) { const iq = wquat(bones[n + "Hand"]).invert(); HAND[n] = { palm: new THREE.Vector3(0, -1, 0).applyQuaternion(iq), thumb: new THREE.Vector3(0, 0, 1).applyQuaternion(iq) }; }
+const HAND = {}; for (const n of ["Left", "Right"]) { const h = bones[n + "Hand"], iq = wquat(h).invert(), dir = wpos(bones[n + "HandMiddle1"]).sub(wpos(h)).normalize();
+  const across = wpos(bones[n + "HandIndex1"]).sub(wpos(bones[n + "HandPinky1"])).normalize(), palm = new THREE.Vector3().crossVectors(dir, across).multiplyScalar(n === "Left" ? 1 : -1).normalize();
+  HAND[n] = { palm: palm.applyQuaternion(iq), thumb: across.applyQuaternion(iq) }; }      // measured from the hand itself, so any rest pose (T or A) works
 
 // sportswear: the mannequin has no clothes of its own, so garments are painted by the bone each vertex follows; hair is added on the head
 if (/xbot/i.test(MODEL)) {
@@ -118,9 +120,12 @@ function rollPalm(n, want) {                           // turn the forearm about
   setWorldQuat(F, new THREE.Quaternion().setFromAxisAngle(f, ang).multiply(wquat(F)));
 }
 const CURL = +(q.get("curl") || 1);
-function curl(n, amount) {                             // close the fingers around a handle
-  for (const f of ["Index", "Middle", "Ring", "Pinky"]) for (const k of [1, 2, 3]) { const b = bones[n + "Hand" + f + k]; if (b) b.rotateZ((n === "Left" ? -1 : 1) * amount * CURL); }
+function curl(n, amount) {                             // close the fingers around a handle: each joint bends towards the palm
+  for (const f of ["Index", "Middle", "Ring", "Pinky"]) for (const k of [1, 2, 3]) { const b = bones[n + "Hand" + f + k], c = bones[n + "Hand" + f + (k + 1)]; if (!b) continue;
+    model.updateWorldMatrix(true, true); const d = (c ? wpos(c).sub(wpos(b)) : wpos(b).sub(wpos(b.parent))).normalize(), ax = new THREE.Vector3().crossVectors(d, palmN(n));
+    if (ax.lengthSq() < 1e-6) continue; setWorldQuat(b, new THREE.Quaternion().setFromAxisAngle(ax.normalize(), amount * CURL * (k === 1 ? 0.9 : 0.75)).multiply(wquat(b))); }
 }
+
 // which way the palm faces, per exercise (s: +1 left, -1 right)
 const PALM = { rdl: "back", squat: "fwd", dbbench: "fwd", incline: "fwd", ohp: "fwd", latpd: "fwd", pullup: "fwd", curl: "sup", latraise: "lat", pushdown: "downback", facepull: "down", hipthrust: "down" };
 function palmDir(kind, s, j) {
@@ -136,7 +141,11 @@ function slab(a, b, halfX, thick, mat, cx = 0) {       // flat board between two
   m.position.copy(a).add(b).multiplyScalar(0.5); m.position.x = cx; m.quaternion.setFromUnitVectors(YA, _b.copy(b).sub(a).normalize());
   m.castShadow = m.receiveShadow = true; gear.add(m); return m; }
 const midOf = (a, b) => wpos(bones[a]).add(wpos(bones[b])).multiplyScalar(0.5);
-function barCentre(p) { const c = (p[1] === "sh" ? midOf("LeftArm", "RightArm") : midOf("LeftUpLeg", "RightUpLeg")).add(new THREE.Vector3(0, -p[3] * S, p[2] * S)); if (p[1] === "sh") c.y += 0.03; return c; }
+function barCentre(p) {                                 // a bar resting on the body: on the upper back behind the neck, or in the crease of the hips
+  const sh = midOf("LeftArm", "RightArm"), hip = midOf("LeftUpLeg", "RightUpLeg"), uT = sh.clone().sub(hip).setX(0).normalize(), back = new THREE.Vector3(0, uT.z, -uT.y);
+  if (p[1] === "sh") return wpos(bones.Neck).addScaledVector(back, BAR_BACK).addScaledVector(uT, BAR_UP);
+  return hip.add(new THREE.Vector3(0, -p[3] * S, p[2] * S)); }
+const BAR_BACK = +(q.get("bb") || 0.1), BAR_UP = +(q.get("bu") || -0.01);
 
 function pose(id, k) {
   LIFTY = LIFT[id] || 0;
@@ -209,12 +218,31 @@ function frame(id, st) {
   const gb = new THREE.Box3().setFromObject(st.g);     // show the machine too, but do not let a tall tower shrink the character
   if (!gb.isEmpty()) { gb.min.max(box.min.clone().subScalar(0.45)); gb.max.min(box.max.clone().addScalar(0.45)); if (!gb.isEmpty()) box.union(gb); }
   const c = box.getCenter(new THREE.Vector3()), size = box.getSize(new THREE.Vector3());
-  const az = AZ[id] == null ? 0.62 : AZ[id], sn = Math.abs(Math.sin(az)), cs = Math.abs(Math.cos(az)), wide = size.z * sn + size.x * cs;
+  const az = q.get("az") != null ? +q.get("az") : (AZ[id] == null ? 0.62 : AZ[id]), sn = Math.abs(Math.sin(az)), cs = Math.abs(Math.cos(az)), wide = size.z * sn + size.x * cs;
   const tgt = new THREE.Vector3(0, THREE.MathUtils.clamp(c.y, 0.55, 1.05), c.z), dist = Math.max(3.9, 2.0 + Math.max(size.y * 1.65, wide * 2.05));
   const dir = new THREE.Vector3(Math.sin(az), 0.3, Math.cos(az)).normalize();
-  camera.position.copy(tgt).addScaledVector(dir, dist * 1.06); camera.lookAt(tgt); disc.position.set(0, 0, c.z); sun.target.position.set(0, 0, c.z);
+  if (q.get("ty")) tgt.y = +q.get("ty");
+  camera.position.copy(tgt).addScaledVector(dir, dist * 1.06 / +(q.get("zoom") || 1)); camera.lookAt(tgt); disc.position.set(0, 0, c.z); sun.target.position.set(0, 0, c.z);
   sun.position.set(2.2, 5, c.z + (Math.cos(az) < -0.2 ? -3.6 : 3.6)); fill.position.set(-3, 2, Math.cos(az) < -0.2 ? -2 : 2);
 }
+// ---- collision check: how deep body segments sink into equipment, sampled through the whole movement ----
+const SEG = [["Hips", "Spine2", 0.105, "trup"], ["Spine2", "Neck", 0.095, "grudi"], ["Neck", "Head", 0.05, "vrat"], ["Head", "HeadTop_End", 0.08, "glava"],
+  ["LeftUpLeg", "LeftLeg", 0.065, "L but"], ["RightUpLeg", "RightLeg", 0.065, "D but"], ["LeftLeg", "LeftFoot", 0.042, "L potk"], ["RightLeg", "RightFoot", 0.042, "D potk"],
+  ["LeftArm", "LeftForeArm", 0.036, "L nadl"], ["RightArm", "RightForeArm", 0.036, "D nadl"], ["LeftForeArm", "LeftHand", 0.028, "L podl"], ["RightForeArm", "RightHand", 0.028, "D podl"]];
+window.collide = (id, tol = 0.03) => {
+  const st = ensure(id), worst = {}, inv = new THREE.Matrix4(), pt = new THREE.Vector3();
+  fixedHolder.clear(); fixedHolder.add(st.g);
+  for (let i = 0; i <= 10; i++) { const k = i / 10, r = pose(id, k); props(id, r.sp, measure(), st); scene.updateMatrixWorld(true);
+    const meshes = [...st.g.children.map((m) => [m, "sprava"]), ...gear.children.map((m) => [m, "teret"])];
+    for (const [a, b, rad, name] of SEG) { if (!bones[a] || !bones[b]) continue; const pa = wpos(bones[a]), pb = wpos(bones[b]);
+      for (const [m, kind] of meshes) { if (kind === "teret" && /podl/.test(name)) continue;            // hands hold the load
+        if (!m.geometry.boundingBox) m.geometry.computeBoundingBox(); const bb = m.geometry.boundingBox; inv.copy(m.matrixWorld).invert();
+        for (let t = 0.15; t <= 0.86; t += 0.14) { pt.copy(pa).lerp(pb, t).applyMatrix4(inv);
+          const dx = Math.max(bb.min.x - pt.x, 0, pt.x - bb.max.x), dy = Math.max(bb.min.y - pt.y, 0, pt.y - bb.max.y), dz = Math.max(bb.min.z - pt.z, 0, pt.z - bb.max.z), out = Math.hypot(dx, dy, dz);
+          const inside = out > 0 ? 0 : Math.min(pt.x - bb.min.x, bb.max.x - pt.x, pt.y - bb.min.y, bb.max.y - pt.y, pt.z - bb.min.z, bb.max.z - pt.z), depth = rad - out + inside;
+          if (depth > tol) { const sz = bb.getSize(new THREE.Vector3()), key = name + " / " + kind + " " + m.geometry.type.replace("Geometry", "") + " " + sz.toArray().map((x) => x.toFixed(2)).join("x");
+            if (!worst[key] || depth > worst[key].d) worst[key] = { d: +depth.toFixed(3), k }; } } } } }
+  return worst; };
 window.ids = Object.keys(FIGS);
 window.total = (id) => { const m = FIGS[id].tm; return m[0] + m[1] + m[2] + m[3]; };
 window.draw = (id, k) => { const st = ensure(id); fixedHolder.clear(); fixedHolder.add(st.g); frame(id, st); const r = pose(id, k); props(id, r.sp, measure(), st); renderer.render(scene, camera); };

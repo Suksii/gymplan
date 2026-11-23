@@ -74,6 +74,13 @@ def tailor():
     for i in tops:
         v = bm.verts[i]
         if v.co.z < hem + 0.1 and abs(v.co.x) < 0.2: v.co.z -= 0.035 * (1 - (v.co.z - hem) / 0.1)
+    # clean edges: the waistband is exactly level and the shirt hem is one straight line
+    legset, topset = set(legs), set(tops)
+    waist_i = [v.index for v in bm.verts if v.index in legset and v.is_boundary and v.co.z > z0 + 0.05]
+    hem_i = [v.index for v in bm.verts if v.index in topset and v.is_boundary and v.co.z < hem + 0.06]
+    hem_z = sum(bm.verts[i].co.z for i in hem_i) / len(hem_i) - 0.012
+    for i in waist_i: bm.verts[i].co.z = target
+    for i in hem_i: bm.verts[i].co.z = hem_z
     bm.to_mesh(suit.data); bm.free()
     print("TAILOR waist", round(zmax, 3), "->", round(target, 3), "islands", len(islands), "legs", len(legs), "top", len(tops))
     for name, idx, off in (("FitLegs", legs, 0.004), ("FitTop", tops, 0.006)):
@@ -81,6 +88,14 @@ def tailor():
         m = suit.modifiers.new(name, "SHRINKWRAP"); m.target = tgt; m.wrap_method = "NEAREST_SURFACEPOINT"; m.wrap_mode = "ABOVE_SURFACE"; m.offset = off; m.vertex_group = name
         with bpy.context.temp_override(object=suit, active_object=suit, selected_objects=[suit]):
             bpy.ops.object.modifier_move_to_index(modifier=name, index=0); bpy.ops.object.modifier_apply(modifier=name)
+    # the fit moves the edges a little: put them back on their lines, then give the cloth smooth curves and real thickness
+    for i in waist_i: suit.data.vertices[i].co.z = target
+    for i in hem_i: suit.data.vertices[i].co.z = hem_z
+    for name, kind, setup in (("Smooth", "SUBSURF", lambda m: setattr(m, "levels", 1)), ("Thick", "SOLIDIFY", lambda m: (setattr(m, "thickness", 0.0035), setattr(m, "offset", 1.0), setattr(m, "use_rim", True)))):
+        m = suit.modifiers.new(name, kind); setup(m)
+        with bpy.context.temp_override(object=suit, active_object=suit, selected_objects=[suit]):
+            bpy.ops.object.modifier_move_to_index(modifier=name, index=0); bpy.ops.object.modifier_apply(modifier=name)
+    for poly in suit.data.polygons: poly.use_smooth = True
     # skin weights follow the new shape: take them from the body surface underneath
     m = suit.modifiers.new("W", "DATA_TRANSFER"); m.object = tgt; m.use_vert_data = True; m.data_types_verts = {"VGROUP_WEIGHTS"}; m.vert_mapping = "POLYINTERP_NEAREST"
     m.layers_vgroup_select_src = "ALL"; m.layers_vgroup_select_dst = "NAME"
@@ -88,7 +103,7 @@ def tailor():
         bpy.ops.object.modifier_move_to_index(modifier="W", index=0); bpy.ops.object.datalayout_transfer(modifier="W"); bpy.ops.object.modifier_apply(modifier="W")
     bpy.data.objects.remove(tgt, do_unlink=True)
     # the skin under the leggings is hidden, so a coarse cloth mesh can never let it show through
-    lo = top_z * 0.085; hide = [v.index for v in body.data.vertices if lo < (body.matrix_world @ v.co).z < target - 0.012 and abs((body.matrix_world @ v.co).x) < 0.27]
+    lo = top_z * 0.085; hide = [v.index for v in body.data.vertices if lo < (body.matrix_world @ v.co).z < target - 0.03 and abs((body.matrix_world @ v.co).x) < 0.27]
     hg = body.vertex_groups.new(name="HideUnderLeggings"); hg.add(hide, 1.0, "REPLACE")
     mm = body.modifiers.new("HideUnderLeggings", "MASK"); mm.vertex_group = "HideUnderLeggings"; mm.invert_vertex_group = True
     print("HIDDEN body verts", len(hide))
@@ -131,3 +146,5 @@ top = max(v.z for v in bb)
 step("render body", lambda: shot("body.png", (2.6, -4.2, 1.15), (0, 0, top * 0.52), 70, 640, 960))
 step("render face", lambda: shot("face.png", (0.55, -1.25, top * 0.94), (0, 0, top * 0.93), 85, 640, 640))
 step("render back", lambda: shot("back.png", (-2.6, 4.2, 1.15), (0, 0, top * 0.52), 70, 480, 720))
+step("render torso", lambda: shot("torso.png", (1.1, -1.9, 1.15), (0, 0, top * 0.68), 70, 720, 720))
+step("render torso back", lambda: shot("torso_back.png", (-1.1, 1.9, 1.15), (0, 0, top * 0.68), 70, 720, 720))

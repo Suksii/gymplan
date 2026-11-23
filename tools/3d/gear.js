@@ -14,7 +14,7 @@ export const GM = {
   panel: std("#C9C4D8", 0.8),            // foot plates
   mat: std("#8E86B2", 0.95),             // floor mat
 };
-const BT = 0.115;    // spine line to the surface of the back
+const BT = 0.138;    // spine line to the surface of the back
 const SEAT = 0.105;  // hip joint to the underside of the seated body
 const X = new THREE.Vector3(1, 0, 0), Y = new THREE.Vector3(0, 1, 0);
 const v = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -92,7 +92,7 @@ export const STATIC = {
   pushdown(k, M0, M1) { return { pulley: k.tower(Math.max(M0.grip.z, M1.grip.z) + 0.5, 2.0) }; },
   facepull(k, M0, M1) { return { pulley: k.tower(Math.max(M0.grip.z, M1.grip.z) + 0.75, M0.grip.y + 0.02) }; },
   hyper(k, M0) { const { hip, foot } = M0, L = foot.clone().sub(hip).normalize(); let n = perp(L); if (n.y > 0) n.negate();                     // n: towards the front of the body (floor side)
-    const p0 = hip.clone().addScaledVector(L, 0.05).addScaledVector(n, 0.125), p1 = hip.clone().addScaledVector(L, 0.36).addScaledVector(n, 0.125); k.board(p0, p1, 0.42);           // thigh pad
+    const p0 = hip.clone().addScaledVector(L, 0.05).addScaledVector(n, 0.14), p1 = hip.clone().addScaledVector(L, 0.36).addScaledVector(n, 0.14); k.board(p0, p1, 0.42);           // thigh pad
     const fp = foot.clone().addScaledVector(L, 0.115); k.board(fp.clone().addScaledVector(n, 0.2), fp.clone().addScaledVector(n, -0.13), 0.44, 0.03, GM.panel);                     // foot plate
     const rc = foot.clone().addScaledVector(n, -0.09).addScaledVector(L, -0.03); k.roller(rc, 0.44, 0.04); for (const sx of [1, -1]) k.tube(v(sx * 0.21, rc.y, rc.z), v(sx * 0.21, fp.y, fp.z).addScaledVector(n, -0.12), 0.016);
     const a = p0.clone().lerp(p1, 0.5).addScaledVector(n, 0.07), c = fp.clone().addScaledVector(n, 0.2); k.tube(a, c, 0.03); k.tube(a, v(0, 0.03, a.z), 0.03); k.tube(c, v(0, 0.03, c.z), 0.03);
@@ -105,7 +105,7 @@ export const STATIC = {
     const top = hip.y - SEAT; k.box(0, top - 0.04, hip.z + 0.1, 0.3, 0.08, 0.34, GM.pad, 0.03); k.box(0, (top - 0.08) / 2, hip.z + 0.12, 0.07, top - 0.08, 0.07);
     const p = hip.clone().addScaledVector(b, BT + 0.05).addScaledVector(uT, 0.55); k.tube(p, v(0, 0.03, p.z - 0.08), 0.028); k.box(0, 0.025, (p.z + hip.z) / 2, 0.07, 0.05, hip.z - p.z + 0.5); k.box(0, 0.025, p.z - 0.1, 0.5, 0.05, 0.07); k.box(0, 0.025, hip.z + 0.25, 0.5, 0.05, 0.07); },
   ohp(k, M0) { k.chair(M0, { front: M0.hip.z + 0.3, backLen: 0.7 }); },
-  hipthrust(k, M0, M1) { k.crossBench(M1.sh.y - 0.1, M1.sh.z - 0.12); },
+  hipthrust(k, M0, M1) { k.crossBench(M1.sh.y - 0.135, M1.sh.z - 0.1, 0, 1.15, 0.26); },
   bss(k, M0) { k.crossBench(M0.footR.y - 0.055, M0.footR.z - 0.05, 0, 0.9, 0.28); },
   dbrow(k, M0) { const cx = (M0.kneeR.x + M0.gripR.x) / 2; k.bench(M0.footR.z - 0.08, M0.gripR.z + 0.16, Math.min(M0.gripR.y - 0.02, M0.kneeR.y - 0.07), cx, 0.28); },
   calf(k, M0) { k.box(0, M0.lift / 2, M0.foot.z + 0.15, 0.7, M0.lift, 0.28, GM.plate, 0.01); k.box(0, M0.lift + 0.004, M0.foot.z + 0.15, 0.7, 0.008, 0.28, GM.mat, 0.003); },

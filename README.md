@@ -15,6 +15,7 @@ Klipovi u `public/anim/` (`<id>.mp4` i `<id>.jpg`) su unaprijed iscrtani: poze i
 
 - `tools/3d/render.cjs sheet [id,id]` crta početak, sredinu i kraj svake vježbe u `tools/3d/out/sheet.png` (za provjeru poza).
 - `tools/3d/render.cjs video [id,id]` pravi klipove u `public/anim/`.
-- Model nije u repozitorijumu. U `tools/3d/models/` treba staviti `Xbot.glb` (lutka s Mixamo skeletom iz three.js primjera, `examples/models/gltf/Xbot.glb`). Odjeću i kosu dodaje `render.html`: boji tijelo po kostima (majica, helanke, patike) i kači kosu na glavu. Drugi lik s Mixamo skeletom radi bez toga: `MODEL=ime.glb node render.cjs ...`.
-- Stopala i oslonjene šake idu tačno na mjesto iz poze (IK na modelu); ruke koje nose teret prate pravac kostiju, a dlan se okreće prema tabeli `PALM`.
+- Lik se pravi skriptom `tools/blender/make_character.py` u Blenderu s dodatkom MPFB (MakeHuman) i CC0 paketom `makehuman_system_assets`: `blender -b --python make_character.py -- out`. Skripta slaže tijelo, kožu, kosu i sportski komplet, podiže struk helanki, pripija majicu, ravna ivice i izvozi `woman.glb` s Mixamo skeletom. Taj fajl ide u `tools/3d/models/` (nije u repozitorijumu). Drugi lik s Mixamo skeletom: `MODEL=ime.glb`.
+- Sprave su u `tools/3d/gear.js` i grade se prema izmjerenom položaju tijela. Stopala i oslonjene šake idu tačno na mjesto iz poze (IK na modelu); dlan se okreće prema tabeli `PALM`, a prsti se zatvaraju oko tereta.
+- `node render.cjs collide [id,id]` mjeri koliko dijelovi tijela ulaze u šipku, tegove i sprave kroz cijeli pokret. Treba ga pokrenuti poslije svake izmjene poza ili sprava.
 - `tools/3d/node_modules/three` (0.170) i `playwright-core` se instaliraju posebno; putanje se zadaju promjenljivima `PW` i `EXE`.
