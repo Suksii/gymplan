@@ -8,8 +8,9 @@
 // Offline renderer: poses a rigged character from the app's exercise poses (FIG.solve) and draws one frame at a time.
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { kit, STATIC, DYNAMIC, CABLE, GM } from "./gear.js";
 
-const q = new URLSearchParams(location.search), W = +(q.get("w") || 480), H = +(q.get("h") || 600);
+const q = new URLSearchParams(location.search), W = +(q.get("w") || 480), H = +(q.get("h") || 600), MODEL = q.get("model") || "Xbot.glb";
 const canvas = document.getElementById("c");
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
 renderer.setPixelRatio(+(q.get("dpr") || 2)); renderer.setSize(W, H);
@@ -33,135 +34,194 @@ const MAT = {
   pad: new THREE.MeshStandardMaterial({ color: "#3A3550", roughness: 0.9 }),
   metal: new THREE.MeshStandardMaterial({ color: "#8C88A0", roughness: 0.35, metalness: 0.7 }),
   weight: new THREE.MeshStandardMaterial({ color: "#A81E5B", roughness: 0.55 }),
+  hair: new THREE.MeshStandardMaterial({ color: "#3B2418", roughness: 0.85 }),
 };
-const S = 1.68 / 141.5, G = 151;            // rig units -> metres; rig ground line
-const V = (v) => new THREE.Vector3((v[2] || 0) * S, (G - v[1]) * S, (v[0] - 100) * S);   // rig point -> world
-const D = (v) => new THREE.Vector3(v[2] || 0, -v[1], v[0]).normalize();                   // rig direction -> world
 const sub = (a, b) => [a[0] - b[0], a[1] - b[1], (a[2] || 0) - (b[2] || 0)];
+const mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, ((a[2] || 0) + (b[2] || 0)) / 2];
+const D = (v) => new THREE.Vector3(v[2] || 0, -v[1], v[0]).normalize();                   // rig direction -> world
+const XA = new THREE.Vector3(1, 0, 0), YA = new THREE.Vector3(0, 1, 0);
 
-let model, bones = {}, rest = new Map(), hipsRestQ, gear = new THREE.Group(); scene.add(gear);
-const gltf = await new GLTFLoader().loadAsync("models/" + (q.get("model") || "Michelle.glb"));
-model = gltf.scene; scene.add(model);
-model.updateWorldMatrix(true, true);
+let bones = {}, rest = new Map(), gear = new THREE.Group(); scene.add(gear);
+const gltf = await new GLTFLoader().loadAsync("models/" + MODEL);
+const model = gltf.scene; scene.add(model); model.updateWorldMatrix(true, true);
 { // normalise height to 1.68 m, feet on the floor
   const box = new THREE.Box3().setFromObject(model); model.scale.multiplyScalar(1.68 / (box.max.y - box.min.y));
   model.updateWorldMatrix(true, true); const b2 = new THREE.Box3().setFromObject(model); model.position.y -= b2.min.y; model.updateWorldMatrix(true, true);
 }
 model.traverse((o) => { if (o.isBone) { bones[o.name.replace(/^mixamorig:?/, "")] = o; rest.set(o, { q: o.quaternion.clone(), p: o.position.clone() }); }
   if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; } });
-hipsRestQ = bones.Hips.getWorldQuaternion(new THREE.Quaternion());
+const wpos = (o) => o.getWorldPosition(new THREE.Vector3());
+const wquat = (o) => o.getWorldQuaternion(new THREE.Quaternion());
+const hipsRestQ = wquat(bones.Hips);
+// rig units -> metres, taken from the legs so that a straight rig leg is a straight model leg; rig ankle height -> model ankle height
+const LEG = wpos(bones.LeftUpLeg).distanceTo(wpos(bones.LeftLeg)) + wpos(bones.LeftLeg).distanceTo(wpos(bones.LeftFoot));
+const S = LEG / 70, footH = wpos(bones.LeftFoot).y;
+const LIFT = { calf: 0.1 }; let LIFTY = 0;                                                          // exercises done standing on a step
+const V = (v) => new THREE.Vector3((v[2] || 0) * S, (145 - v[1]) * S + footH + LIFTY, (v[0] - 100) * S);    // rig point -> world
+const Yw = (y) => Math.max(0, (145 - y) * S + footH);
+// hand axes in the bone's own frame (rest pose is a T-pose: palms down, thumbs forward)
+const HAND = {}; for (const n of ["Left", "Right"]) { const iq = wquat(bones[n + "Hand"]).invert(); HAND[n] = { palm: new THREE.Vector3(0, -1, 0).applyQuaternion(iq), thumb: new THREE.Vector3(0, 0, 1).applyQuaternion(iq) }; }
+
+// sportswear: the mannequin has no clothes of its own, so garments are painted by the bone each vertex follows; hair is added on the head
+if (/xbot/i.test(MODEL)) {
+  const COL = { skin: new THREE.Color("#DDA583"), top: new THREE.Color("#1F9E8A"), leg: new THREE.Color("#2B2742"), shoe: new THREE.Color("#F4F3F8") };
+  const part = (n) => /Foot|Toe/.test(n) ? "shoe" : /UpLeg|Leg|Hips/.test(n) ? "leg" : /Spine|Shoulder/.test(n) ? "top" : "skin";
+  model.traverse((o) => { if (!o.isSkinnedMesh) return; const g = o.geometry, si = g.attributes.skinIndex, sw = g.attributes.skinWeight, col = new Float32Array(si.count * 3);
+    for (let i = 0; i < si.count; i++) { let best = 0, bw = -1; for (let k = 0; k < 4; k++) { const w = sw.getComponent(i, k); if (w > bw) { bw = w; best = si.getComponent(i, k); } }
+      const c = COL[part(o.skeleton.bones[best].name.replace(/^mixamorig:?/, ""))]; col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b; }
+    g.setAttribute("color", new THREE.BufferAttribute(col, 3)); o.material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6 }); });
+  // hair sized from the head's own vertices (the head bone alone says little about how big the skull mesh is)
+  const hb = new THREE.Box3(), vp = new THREE.Vector3();
+  model.traverse((o) => { if (!o.isSkinnedMesh) return; const si = o.geometry.attributes.skinIndex, sw = o.geometry.attributes.skinWeight;
+    for (let i = 0; i < si.count; i++) { let best = 0, bw = -1; for (let k = 0; k < 4; k++) { const w = sw.getComponent(i, k); if (w > bw) { bw = w; best = si.getComponent(i, k); } }
+      if (/Head$/.test(o.skeleton.bones[best].name)) { o.getVertexPosition(i, vp); hb.expandByPoint(vp.applyMatrix4(o.matrixWorld)); } } });
+  // the box gives a trustworthy size but sits low, so the centre comes from the head bones
+  const hs = hb.getSize(new THREE.Vector3()).multiplyScalar(0.5), hc = wpos(bones.Head).lerp(wpos(bones.HeadTop_End), 0.5); hc.y += 0.012;
+  const add = (geo, x, y, z, sx, sy, sz, rx = 0) => { const m = new THREE.Mesh(geo, MAT.hair); m.position.set(hc.x + x * hs.x, hc.y + y * hs.y, hc.z + z * hs.z); m.scale.set(sx, sy, sz); m.rotation.x = rx; m.castShadow = true; scene.add(m); bones.Head.attach(m); };
+  add(new THREE.SphereGeometry(1, 40, 24, 0, Math.PI * 2, 0, Math.PI * 0.6), 0, 0.07, -0.08, hs.x * 1.05, hs.y * 1.04, hs.z * 1.1, -0.78);   // cap, tilted back so the forehead stays free
+  add(new THREE.SphereGeometry(1, 24, 18), 0, 0.62, -1.02, hs.x * 0.42, hs.x * 0.42, hs.x * 0.42);                                      // bun
+  // (no hanging ponytail: the bun alone reads cleanly from every camera angle)
+}
+
 const SIDE = { 1: "Left", "-1": "Right" };
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion();
-const wpos = (o) => o.getWorldPosition(new THREE.Vector3());
 function setWorldQuat(bone, qw) { bone.parent.getWorldQuaternion(_q2).invert(); bone.quaternion.copy(_q2.multiply(qw)); bone.updateWorldMatrix(false, true); }
 function aim(bone, child, dir) {                       // rotate `bone` so that it points from itself to `child` along `dir`
   bone.updateWorldMatrix(true, true);
   _a.copy(wpos(child)).sub(wpos(bone)).normalize(); _q.setFromUnitVectors(_a, dir);
-  setWorldQuat(bone, _q.multiply(bone.getWorldQuaternion(new THREE.Quaternion())));
+  setWorldQuat(bone, _q.multiply(wquat(bone)));
 }
-function curl(side, amount) {                          // close the fingers around a handle
-  for (const f of ["Index", "Middle", "Ring", "Pinky"]) for (const n of [1, 2, 3]) {
-    const b = bones[side + "Hand" + f + n]; if (b) b.rotateZ((side === "Left" ? -1 : 1) * amount);
-  }
-  for (const n of [1, 2]) { const b = bones[side + "HandThumb" + n]; if (b) b.rotateX(0.35); }
-}
-function cyl(a, b, r, mat, seg = 20) { const l = a.distanceTo(b), m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, l, seg), mat);
-  m.position.copy(a).add(b).multiplyScalar(0.5); m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), _b.copy(b).sub(a).normalize()); m.castShadow = m.receiveShadow = true; gear.add(m); return m; }
-function slab(a, b, halfX, thick, mat, cx = 0) {       // flat board between two points in the side plane, 2*halfX wide
-  const l = a.distanceTo(b), m = new THREE.Mesh(new THREE.BoxGeometry(halfX * 2, l, thick), mat);
-  m.position.copy(a).add(b).multiplyScalar(0.5); m.position.x = cx; m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), _b.copy(b).sub(a).normalize());
-  m.castShadow = m.receiveShadow = true; gear.add(m); return m; }
-function armIK(n, tgt, pole) {
-  const A = bones[n + "Arm"], F = bones[n + "ForeArm"], Hd = bones[n + "Hand"]; model.updateWorldMatrix(true, true);
-  const a = wpos(A), l1 = a.distanceTo(wpos(F)), l2 = wpos(F).distanceTo(wpos(Hd)) + grip(n).distanceTo(wpos(Hd)) * 0.9;
-  const ab = tgt.clone().sub(a), d = ab.length(), dd = THREE.MathUtils.clamp(d, Math.abs(l1 - l2) + 0.01, l1 + l2 - 0.005), ax = ab.clone().normalize();
+function chainIK(A, F, E, tgt, pole, extra = 0) {      // two-bone IK on the model: A -> F -> E reaches `tgt`, bending towards `pole`
+  model.updateWorldMatrix(true, true);
+  const a = wpos(A), l1 = a.distanceTo(wpos(F)), l2 = wpos(F).distanceTo(wpos(E)) + extra;
+  const ab = tgt.clone().sub(a), d = ab.length(), dd = THREE.MathUtils.clamp(d, Math.abs(l1 - l2) + 0.01, l1 + l2 - 0.004), ax = ab.clone().normalize();
   const c = (l1 * l1 + dd * dd - l2 * l2) / (2 * l1 * dd), sn = Math.sqrt(Math.max(0, 1 - c * c));
   const pp = pole.clone().addScaledVector(ax, -pole.dot(ax)); if (pp.lengthSq() < 1e-6) pp.set(0, -1, 0); pp.normalize();
   const el = a.clone().addScaledVector(ax, l1 * c).addScaledVector(pp, l1 * sn);
-  aim(A, F, el.clone().sub(a).normalize()); aim(F, Hd, tgt.clone().sub(el).normalize());
+  aim(A, F, el.clone().sub(a).normalize()); aim(F, E, tgt.clone().sub(el).normalize());
 }
-function grip(side) { const h = bones[side + "Hand"], m = bones[side + "HandMiddle1"]; return wpos(h).lerp(wpos(m), 0.85); }
+const grip = (n) => wpos(bones[n + "Hand"]).lerp(wpos(bones[n + "HandMiddle1"]), 0.85);
+const palmN = (n) => HAND[n].palm.clone().applyQuaternion(wquat(bones[n + "Hand"]));
+const thumbN = (n) => HAND[n].thumb.clone().applyQuaternion(wquat(bones[n + "Hand"]));
+const armIK = (n, tgt, pole) => chainIK(bones[n + "Arm"], bones[n + "ForeArm"], bones[n + "Hand"], tgt, pole, grip(n).distanceTo(wpos(bones[n + "Hand"])) * 0.9);
+function rollPalm(n, want) {                           // turn the forearm about its own axis until the palm faces `want`
+  model.updateWorldMatrix(true, true);
+  const F = bones[n + "ForeArm"], f = wpos(bones[n + "Hand"]).sub(wpos(F)).normalize(), pn = palmN(n);
+  const cur = pn.clone().addScaledVector(f, -pn.dot(f)), des = want.clone().addScaledVector(f, -want.dot(f));
+  if (cur.lengthSq() < 1e-5 || des.lengthSq() < 1e-5) return; cur.normalize(); des.normalize();
+  const ang = Math.atan2(_a.crossVectors(cur, des).dot(f), cur.dot(des));
+  setWorldQuat(F, new THREE.Quaternion().setFromAxisAngle(f, ang).multiply(wquat(F)));
+}
+const CURL = +(q.get("curl") || 1);
+function curl(n, amount) {                             // close the fingers around a handle
+  for (const f of ["Index", "Middle", "Ring", "Pinky"]) for (const k of [1, 2, 3]) { const b = bones[n + "Hand" + f + k]; if (b) b.rotateZ((n === "Left" ? -1 : 1) * amount * CURL); }
+}
+// which way the palm faces, per exercise (s: +1 left, -1 right)
+const PALM = { rdl: "back", squat: "fwd", dbbench: "fwd", incline: "fwd", ohp: "fwd", latpd: "fwd", pullup: "fwd", curl: "sup", latraise: "lat", pushdown: "downback", facepull: "down", hipthrust: "down" };
+function palmDir(kind, s, j) {
+  if (kind === "fwd") return new THREE.Vector3(0, 0, 1); if (kind === "back") return new THREE.Vector3(0, 0, -1); if (kind === "down") return new THREE.Vector3(0, -1, 0);
+  if (kind === "downback") return new THREE.Vector3(0, -1, -0.5); if (kind === "lat") return new THREE.Vector3(-s * 0.5, -1, 0);
+  if (kind === "sup") return V(j.sj).sub(V(j.hand)).normalize().add(new THREE.Vector3(0, 0, 0.35));
+  return new THREE.Vector3(-s, 0, 0);
+}
+function cyl(a, b, r, mat, seg = 20) { const l = a.distanceTo(b), m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, l, seg), mat);
+  m.position.copy(a).add(b).multiplyScalar(0.5); m.quaternion.setFromUnitVectors(YA, _b.copy(b).sub(a).normalize()); m.castShadow = m.receiveShadow = true; gear.add(m); return m; }
+function slab(a, b, halfX, thick, mat, cx = 0) {       // flat board between two points in the side plane, 2*halfX wide
+  const l = a.distanceTo(b), m = new THREE.Mesh(new THREE.BoxGeometry(halfX * 2, l, thick), mat);
+  m.position.copy(a).add(b).multiplyScalar(0.5); m.position.x = cx; m.quaternion.setFromUnitVectors(YA, _b.copy(b).sub(a).normalize());
+  m.castShadow = m.receiveShadow = true; gear.add(m); return m; }
+const midOf = (a, b) => wpos(bones[a]).add(wpos(bones[b])).multiplyScalar(0.5);
+function barCentre(p) { const c = (p[1] === "sh" ? midOf("LeftArm", "RightArm") : midOf("LeftUpLeg", "RightUpLeg")).add(new THREE.Vector3(0, -p[3] * S, p[2] * S)); if (p[1] === "sh") c.y += 0.03; return c; }
 
 function pose(id, k) {
-  const sp = FIGS[id], o = FIG.solve(sp, k);
+  LIFTY = LIFT[id] || 0;
+  const sp = FIGS[id], o = FIG.solve(sp, k), A = FIG.solve(sp, 0), B = FIG.solve(sp, 1);
   for (const [b, r] of rest) { b.quaternion.copy(r.q); b.position.copy(r.p); }
-  // torso: hips take the lean of the hip->shoulder line
-  const up = D(o.u), X = new THREE.Vector3(1, 0, 0), Z = new THREE.Vector3().crossVectors(X, up).normalize();
-  const Rt = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(X, up, Z));
-  const place = (p) => { bones.Hips.position.copy(bones.Hips.parent.worldToLocal(p.clone())); };
+  // torso: hips take the lean of the hip->shoulder line; the hip joints sit where the rig has them
+  const up = D(o.u), Z = new THREE.Vector3().crossVectors(XA, up).normalize();
+  const Rt = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(XA, up, Z));
+  const place = (p) => { bones.Hips.position.copy(bones.Hips.parent.worldToLocal(p.clone())); bones.Hips.updateWorldMatrix(false, true); };
   model.updateWorldMatrix(true, true); place(V(o.hip)); setWorldQuat(bones.Hips, Rt.clone().multiply(hipsRestQ));
-  const limbs = () => { for (const s of [1, -1]) { const n = SIDE[s], j = o.S[s];
-    aim(bones[n + "UpLeg"], bones[n + "Leg"], D(sub(j.kn, j.hj))); aim(bones[n + "Leg"], bones[n + "Foot"], D(sub(j.foot, j.kn)));
+  place(wpos(bones.Hips).add(V(o.hip).sub(midOf("LeftUpLeg", "RightUpLeg"))));
+  const floorHands = id === "pushup" || id === "plank";
+  for (const s of [1, -1]) { const n = SIDE[s], j = o.S[s];
+    chainIK(bones[n + "UpLeg"], bones[n + "Leg"], bones[n + "Foot"], V(j.foot), D(sub(j.kn, mid(j.hj, j.foot))));   // feet go exactly where the rig puts them
     if (bones[n + "ToeBase"]) aim(bones[n + "Foot"], bones[n + "ToeBase"], D(sub(j.toe, j.foot)));
-    aim(bones[n + "Arm"], bones[n + "ForeArm"], D(sub(j.el, j.sj))); aim(bones[n + "ForeArm"], bones[n + "Hand"], D(sub(j.hand, j.el))); } };
-  limbs();
-  // anchor: keep the supporting point where the rig has it (model proportions differ from the rig's)
-  const A = sp.a, anchor = sp.anchor || (A.foot[1] >= 136 ? "foot" : "hip");
-  if (anchor !== "hip") {
-    const bone = anchor === "hand" ? bones.LeftHand : bones.LeftFoot, want = V(anchor === "hand" ? o.S[1].hand : o.S[1].foot);
-    if (anchor === "foot") want.y = Math.max(want.y, 0) + footH;
-    const d = want.sub(wpos(bone)); d.x = 0; place(wpos(bones.Hips).add(d)); bones.Hips.updateWorldMatrix(false, true);
+    const planted = Math.hypot(...sub(A.S[s].hand, B.S[s].hand)) < 1.5, pole = D(sub(j.el, mid(j.sj, j.hand)));
+    if (floorHands) { const t = V(j.hand); t.y = 0.03; armIK(n, t, id === "plank" ? new THREE.Vector3(0, -1, -0.25) : new THREE.Vector3(s * 0.45, 0.25, -1)); }   // plank rests on the forearms, push-up on the palms
+    else if (planted && id !== "pullup") armIK(n, V(j.hand), pole);
+    else { aim(bones[n + "Arm"], bones[n + "ForeArm"], D(sub(j.el, j.sj))); aim(bones[n + "ForeArm"], bones[n + "Hand"], D(sub(j.hand, j.el))); }
   }
-  const rb = (sp.props || []).find((p) => p[0] === "bar" && p[1] !== "hand");
+  const rb = (sp.props || []).find((p) => p[0] === "bar" && p[1] !== "hand");                       // bar resting on the body: hands reach for it
   if (rb) { model.updateWorldMatrix(true, true); const c = barCentre(rb), half = rb[1] === "sh" ? 0.34 : 0.3;
-    for (const s of [1, -1]) { const j = o.S[s], mid = [(j.sj[0] + j.hand[0]) / 2, (j.sj[1] + j.hand[1]) / 2, (j.sj[2] + j.hand[2]) / 2];
-      armIK(SIDE[s], c.clone().setX(s * half), D(sub(j.el, mid)).add(new THREE.Vector3(0, -0.6, rb[1] === "sh" ? -0.5 : 0))); } }
-  if (id === "pushup" || id === "plank") { model.updateWorldMatrix(true, true);   // palms on the floor
-    for (const s of [1, -1]) { const t = V(o.S[s].hand); t.y = 0.03; armIK(SIDE[s], t, new THREE.Vector3(s * 0.5, 0.2, -1)); } }
-  const holds = (sp.props || []).some((p) => ["bar", "db", "db1", "handle"].includes(p[0]) && (p[1] === "hand" || p[0] === "handle")) || !!rb;
-  if (holds) { curl("Left", 1.15); curl("Right", sp.props.some((p) => p[0] === "db1") && id !== "ohtri" ? 0.25 : 1.15); }
+    for (const s of [1, -1]) { const j = o.S[s]; armIK(SIDE[s], c.clone().setX(s * half), D(sub(j.el, mid(j.sj, j.hand))).add(new THREE.Vector3(0, -0.6, rb[1] === "sh" ? -0.5 : 0))); } }
+  for (const s of [1, -1]) { const n = SIDE[s];
+    if (floorHands) { model.updateWorldMatrix(true, true); const hq = wquat(bones[n + "Hand"]); setWorldQuat(bones[n + "Hand"], new THREE.Quaternion().setFromUnitVectors(HAND[n].palm.clone().applyQuaternion(hq), new THREE.Vector3(0, -1, 0)).multiply(hq)); }
+    else rollPalm(n, palmDir(PALM[id] || "in", s, o.S[s])); }
+  const holds = (sp.props || []).some((p) => ["bar", "db", "db1", "handle"].includes(p[0]));
+  if (holds) { curl("Left", 1.1); curl("Right", id === "dbrow" ? 0 : 1.1); }
   model.updateWorldMatrix(true, true);
   return { sp, o };
 }
-function barCentre(p) { const c = (p[1] === "sh" ? wpos(bones.LeftArm).add(wpos(bones.RightArm)).multiplyScalar(0.5) : wpos(bones.Hips)).add(new THREE.Vector3(0, -p[3] * S, p[2] * S));
-  if (p[1] === "sh") c.y += 0.02; return c; }
-let footH = 0.09;
-{ model.updateWorldMatrix(true, true); footH = wpos(bones.LeftFoot).y; }
 
-function props(sp, o) {
+// measurements of the posed character, used to fit the equipment around her
+function measure() { model.updateWorldMatrix(true, true);
+  const M = { hip: midOf("LeftUpLeg", "RightUpLeg"), sh: midOf("LeftArm", "RightArm"), head: wpos(bones.Head), kneeL: wpos(bones.LeftLeg), kneeR: wpos(bones.RightLeg), footL: wpos(bones.LeftFoot), footR: wpos(bones.RightFoot),
+    toeL: wpos(bones.LeftToeBase), toeR: wpos(bones.RightToeBase), gripL: grip("Left"), gripR: grip("Right"), lift: LIFTY };
+  for (const n of ["knee", "foot", "toe", "grip"]) M[n === "knee" ? "kn" : n] = M[n + "L"].clone().add(M[n + "R"]).multiplyScalar(0.5);
+  M.uT = M.sh.clone().sub(M.hip).setX(0).normalize(); M.b = new THREE.Vector3(0, M.uT.z, -M.uT.y); return M; }
+const fixed = {}, fixedHolder = new THREE.Group(); scene.add(fixedHolder);
+function ensure(id) {                                   // fixed equipment is built once, from the start and end poses
+  if (!fixed[id]) { pose(id, 0); const M0 = measure(); pose(id, 1); const M1 = measure(), g = new THREE.Group();
+    fixed[id] = { g, M0, M1, extra: (STATIC[id] && STATIC[id](kit(g), M0, M1)) || {} }; }
+  return fixed[id];
+}
+function props(id, sp, M, st) {
   for (const m of [...gear.children]) { m.geometry.dispose(); gear.remove(m); }
-  const gl = grip("Left"), gr = grip("Right"), gm = gl.clone().add(gr).multiplyScalar(0.5);
-  const J = { hand: gm, hip: wpos(bones.Hips), sh: wpos(bones.LeftArm).add(wpos(bones.RightArm)).multiplyScalar(0.5),
-    foot: wpos(bones.LeftFoot).add(wpos(bones.RightFoot)).multiplyScalar(0.5), kn: wpos(bones.LeftLeg).add(wpos(bones.RightLeg)).multiplyScalar(0.5) };
-  const off = (dx, dy) => new THREE.Vector3(0, -dy * S, dx * S);
+  const G = {}; for (const n of ["Left", "Right"]) G[n] = grip(n).addScaledVector(palmN(n), 0.03);
+  const gl = G.Left, gr = G.Right, gm = gl.clone().add(gr).multiplyScalar(0.5);
+  if (DYNAMIC[id]) DYNAMIC[id](kit(gear), M, st.M0, st.M1, st.extra);
+  if (CABLE[id]) cyl(st.extra.pulley, gm, 0.006, GM.steel, 8);
   for (const p of sp.props || []) {
     const t = p[0];
-    if (t === "rect" && sp === FIGS.calf) continue;
-    if (t === "rect") { const zc = (p[5] || 0) * S, zh = (p[6] || 15) * S, m = new THREE.Mesh(new THREE.BoxGeometry(zh * 2, p[4] * S, p[3] * S), p[4] <= 8 ? MAT.pad : MAT.gear);
-      m.position.set(zc, (G - p[2] - p[4] / 2) * S, (p[1] + p[3] / 2 - 100) * S); m.castShadow = m.receiveShadow = true; gear.add(m); }
-    else if (t === "seg") { const a = V([p[1], p[2], p[6] || 0]), b = V([p[3], p[4], p[6] || 0]);
-      if (p[5] >= 6) slab(a, b, (p[7] || 13) * S, 0.05, MAT.pad, (p[6] || 0) * S); else cyl(a, b, 0.022, MAT.metal); }
-    else if (t === "cable") cyl(V([p[1], p[2], 0]), J[p[3]].clone(), 0.006, MAT.metal, 8);
-    else if (t === "handle") { const e = (p[2] || 0) * S + 0.04; cyl(gl.clone().add(new THREE.Vector3(e, 0, 0)), gr.clone().add(new THREE.Vector3(-e, 0, 0)), 0.014, MAT.metal); }
-    else if (t === "pad") { const a = wpos(bones.LeftFoot).add(off(p[2], p[3])), b = wpos(bones.RightFoot).add(off(p[2], p[3])); a.x += 0.05; b.x -= 0.05; cyl(a, b, p[4] * S * 1.3, MAT.pad); }
-    else if (t === "padz") for (const n of ["Left", "Right"]) { const c = wpos(bones[n + "Leg"]), sx = n === "Left" ? 1 : -1; cyl(c.clone().add(new THREE.Vector3(sx * 0.07, 0, 0)), c.clone().add(new THREE.Vector3(sx * 0.13, 0, 0)), p[2] * S * 1.6, MAT.pad); }
-    else if (t === "segj") { const c = J[p[1]].clone(); if (p[1] === "foot") c.add(J.foot.clone().sub(J.kn).normalize().multiplyScalar(0.13)); slab(c.clone().add(off(p[2], p[3])), c.clone().add(off(p[4], p[5])), 0.24, 0.04, MAT.gear); }
-    else if (t === "bar") { const c = p[1] === "hand" ? gm.clone().add(off(p[2], p[3])) : barCentre(p);
-      cyl(c.clone().setX(-0.8), c.clone().setX(0.8), 0.014, MAT.metal);
-      for (const sx of [1, -1]) { cyl(c.clone().setX(sx * 0.56), c.clone().setX(sx * 0.6), 0.2, MAT.weight, 40); cyl(c.clone().setX(sx * 0.61), c.clone().setX(sx * 0.65), 0.2, MAT.weight, 40); cyl(c.clone().setX(sx * 0.65), c.clone().setX(sx * 0.69), 0.03, MAT.metal); } }
-    else if (t === "db" || t === "db1") { const ax = p[2] === "x" ? new THREE.Vector3(0, 0, 1) : p[2] === "y" ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0);
-      const pts = t === "db1" ? [sp.a.hz < 5 ? gm : gl] : [gl, gr];
-      for (const c of pts) { const a = c.clone().addScaledVector(ax, 0.1), b = c.clone().addScaledVector(ax, -0.1); cyl(a, b, 0.013, MAT.metal);
+    if (t === "handle" && id !== "pullup") { const e = (p[2] || 0) * S + 0.05; cyl(gl.clone().add(new THREE.Vector3(e, 0, 0)), gr.clone().add(new THREE.Vector3(-e, 0, 0)), 0.014, GM.steel); }
+    else if (t === "bar") { const c = p[1] === "hand" ? gm.clone() : barCentre(p);
+      cyl(c.clone().setX(-0.8), c.clone().setX(0.8), 0.014, GM.steel);
+      for (const sx of [1, -1]) { cyl(c.clone().setX(sx * 0.56), c.clone().setX(sx * 0.6), 0.2, MAT.weight, 40); cyl(c.clone().setX(sx * 0.61), c.clone().setX(sx * 0.65), 0.2, MAT.weight, 40); cyl(c.clone().setX(sx * 0.65), c.clone().setX(sx * 0.69), 0.03, GM.steel); } }
+    else if (t === "db" || t === "db1") {
+      const one = t === "db1", both = one && sp.a.hz < 5, list = both ? [[gm, new THREE.Vector3(0, 1, 0)]] : (one ? ["Left"] : ["Left", "Right"]).map((n) => [G[n], thumbN(n)]);
+      for (const [c, ax] of list) { const a = c.clone().addScaledVector(ax, 0.1), b = c.clone().addScaledVector(ax, -0.1); cyl(a, b, 0.013, GM.steel);
         cyl(a, c.clone().addScaledVector(ax, 0.055), 0.05, MAT.weight, 24); cyl(b, c.clone().addScaledVector(ax, -0.055), 0.05, MAT.weight, 24); } }
   }
 }
-// camera: three-quarter front view by default; side-on where equipment or the floor would hide the movement
-const AZ = { legpress: 1.45, cablerow: 1.3, plank: 1.25, pushup: 1.25, hyper: 1.2, legraise: 1.15, hipthrust: 1.05, legcurl: 1.05, legext: 1.05, dbrow: 0.95, pullup: 0.8 };
-function frame(id) {
+// camera: three-quarter front view by default; from the side or from behind where the machine would hide the movement
+const AZ = { legpress: 1.45, cablerow: 1.35, plank: 1.25, pushup: 1.25, hyper: 1.25, legraise: 1.15, hipthrust: 1.05, legcurl: 1.15, legext: 1.15, dbrow: 0.95, pullup: 2.4, latpd: 2.35, pushdown: 1.05, facepull: 1.1, abd: 0.35, squat: 0.75 };
+function frame(id, st) {
+  LIFTY = LIFT[id] || 0;
   const sp = FIGS[id], box = new THREE.Box3();
   for (const k of [0, 1]) { const o = FIG.solve(sp, k); box.expandByPoint(V(o.hip)); box.expandByPoint(V(o.shm).add(D(o.u).multiplyScalar(0.3)));
     for (const s of [1, -1]) for (const n of ["hand", "foot", "kn", "el"]) box.expandByPoint(V(o.S[s][n])); }
+  const gb = new THREE.Box3().setFromObject(st.g);     // show the machine too, but do not let a tall tower shrink the character
+  if (!gb.isEmpty()) { gb.min.max(box.min.clone().subScalar(0.45)); gb.max.min(box.max.clone().addScalar(0.45)); if (!gb.isEmpty()) box.union(gb); }
   const c = box.getCenter(new THREE.Vector3()), size = box.getSize(new THREE.Vector3());
-  const azs = AZ[id] == null ? 0.62 : AZ[id]; size.z = Math.max(size.z * Math.sin(azs), size.z * 0.55);
-  const tgt = new THREE.Vector3(0, THREE.MathUtils.clamp(c.y, 0.55, 1.0), c.z), dist = Math.max(3.9, 2.0 + Math.max(size.y * 1.65, size.z * 2.05));
-  const az = AZ[id] == null ? 0.62 : AZ[id], dir = new THREE.Vector3(Math.sin(az), 0.3, Math.cos(az)).normalize();
-  camera.position.copy(tgt).addScaledVector(dir, dist * (AZ[id] > 1 ? 1.14 : 1)); camera.lookAt(tgt); disc.position.set(0, 0, c.z); sun.target.position.set(0, 0, c.z); sun.position.set(2.2, 5, 3.6 + c.z);
+  const az = AZ[id] == null ? 0.62 : AZ[id], sn = Math.abs(Math.sin(az)), cs = Math.abs(Math.cos(az)), wide = size.z * sn + size.x * cs;
+  const tgt = new THREE.Vector3(0, THREE.MathUtils.clamp(c.y, 0.55, 1.05), c.z), dist = Math.max(3.9, 2.0 + Math.max(size.y * 1.65, wide * 2.05));
+  const dir = new THREE.Vector3(Math.sin(az), 0.3, Math.cos(az)).normalize();
+  camera.position.copy(tgt).addScaledVector(dir, dist * 1.06); camera.lookAt(tgt); disc.position.set(0, 0, c.z); sun.target.position.set(0, 0, c.z);
+  sun.position.set(2.2, 5, c.z + (Math.cos(az) < -0.2 ? -3.6 : 3.6)); fill.position.set(-3, 2, Math.cos(az) < -0.2 ? -2 : 2);
 }
 window.ids = Object.keys(FIGS);
 window.total = (id) => { const m = FIGS[id].tm; return m[0] + m[1] + m[2] + m[3]; };
-window.draw = (id, k) => { frame(id); const r = pose(id, k); props(r.sp, r.o); renderer.render(scene, camera); };
+window.draw = (id, k) => { const st = ensure(id); fixedHolder.clear(); fixedHolder.add(st.g); frame(id, st); const r = pose(id, k); props(id, r.sp, measure(), st); renderer.render(scene, camera); };
 window.drawAt = (id, sec) => window.draw(id, FIG.at(FIGS[id], sec).k);
 window.restPose = () => { for (const [b, r] of rest) { b.quaternion.copy(r.q); b.position.copy(r.p); } for (const m of [...gear.children]) gear.remove(m);
-  camera.position.set(2.2, 1.4, 5); camera.lookAt(0, 0.9, 0); renderer.render(scene, camera); };
+  camera.position.set(1.6, 1.3, 3.6); camera.lookAt(0, 0.95, 0); renderer.render(scene, camera); };
+window.dbg = () => { const r = { head: wpos(bones.Head).toArray().map((x) => +x.toFixed(3)), top: wpos(bones.HeadTop_End).toArray().map((x) => +x.toFixed(3)), meshes: [] };
+  model.traverse((o) => { if (!o.isSkinnedMesh) return; const si = o.geometry.attributes.skinIndex, sw = o.geometry.attributes.skinWeight, cnt = {}, b = new THREE.Box3(), v = new THREE.Vector3();
+    for (let i = 0; i < si.count; i++) { let best = 0, bw = -1; for (let k = 0; k < 4; k++) { const w = sw.getComponent(i, k); if (w > bw) { bw = w; best = si.getComponent(i, k); } } const nm = o.skeleton.bones[best].name; cnt[nm] = (cnt[nm] || 0) + 1;
+      if (/Head$/.test(nm)) { o.getVertexPosition(i, v); b.expandByPoint(v.applyMatrix4(o.matrixWorld)); } }
+    r.meshes.push({ name: o.name, verts: si.count, headVerts: cnt["mixamorig:Head"] || cnt["mixamorigHead"] || 0, neck: cnt["mixamorig:Neck"] || cnt["mixamorigNeck"] || 0, box: b.isEmpty() ? null : [b.min.toArray().map((x) => +x.toFixed(3)), b.max.toArray().map((x) => +x.toFixed(3))], names: Object.keys(cnt).slice(0, 4) }); });
+  return r; };
+window.headShot = (x = 0.9, z = 1.3) => { window.restPose(); camera.position.set(x, 1.75, z); camera.lookAt(0, 1.55, 0); renderer.render(scene, camera); };
 window.ready = true;
 </script>

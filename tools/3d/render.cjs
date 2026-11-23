@@ -14,7 +14,7 @@ const src = fs.readFileSync(path.join(root, "app.fragment.html"), "utf8");
 const a = src.indexOf("var FIGS={"), b = src.indexOf("})();", src.indexOf("var FIG=(function(){")) + 5;
 fs.writeFileSync(path.join(here, "fig.gen.js"), src.slice(a, b) + "\n");
 
-const types = { ".html": "text/html", ".js": "text/javascript", ".glb": "model/gltf-binary", ".json": "application/json" };
+const types = { ".html": "text/html", ".js": "text/javascript", ".mjs": "text/javascript", ".glb": "model/gltf-binary", ".json": "application/json" };
 const server = http.createServer((req, res) => {
   const f = path.join(here, decodeURIComponent(req.url.split("?")[0]));
   if (!f.startsWith(here) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { res.writeHead(404); return res.end(); }
@@ -25,10 +25,10 @@ const server = http.createServer((req, res) => {
   await new Promise((r) => server.listen(0, "127.0.0.1", r));
   const base = "http://127.0.0.1:" + server.address().port;
   const br = await chromium.launch({ executablePath: EXE, args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] });
-  const sheet = mode === "sheet", w = sheet ? 300 : W, h = sheet ? 375 : H;
+  const sheet = mode === "sheet", w = sheet ? 360 : W, h = sheet ? 450 : H;
   const p = await br.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: 1 });
   p.on("pageerror", (e) => console.error("page error:", String(e))); p.on("console", (m) => { if (m.type() === "error") console.error("console:", m.text()); });
-  await p.goto(`${base}/render.html?w=${w}&h=${h}&dpr=${sheet ? 1 : 2}&model=${process.env.MODEL || "Michelle.glb"}`);
+  await p.goto(`${base}/render.html?w=${w}&h=${h}&dpr=${sheet ? 1 : 2}&model=${process.env.MODEL || "Xbot.glb"}`);
   await p.waitForFunction("window.ready===true", null, { timeout: 120000 });
   const ids = (await p.evaluate("window.ids")).filter((id) => !only || only.includes(id));
   const out = path.join(here, "out"); fs.mkdirSync(out, { recursive: true });
@@ -38,7 +38,7 @@ const server = http.createServer((req, res) => {
     const files = [];
     if (!only) { await p.evaluate("window.restPose()"); await shot(path.join(out, "rest.png")); }
     for (const id of ids) for (const k of [0, 0.5, 1]) { await p.evaluate(([i, kk]) => window.draw(i, kk), [id, k]); const f = path.join(out, `s-${id}-${k}.png`); await shot(f); files.push(f); }
-    const cols = 6, rows = Math.ceil(files.length / cols);
+    const cols = +(process.env.COLS || 6), rows = Math.ceil(files.length / cols);
     execFileSync("ffmpeg", ["-y", "-loglevel", "error", ...files.flatMap((f) => ["-i", f]), "-filter_complex",
       files.map((_, i) => `[${i}:v]`).join("") + `xstack=inputs=${files.length}:layout=` + files.map((_, i) => `${(i % cols) * w}_${Math.floor(i / cols) * h}`).join("|") + `:fill=white`, path.join(out, "sheet.png")]);
     files.forEach((f) => fs.unlinkSync(f));

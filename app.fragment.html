@@ -630,17 +630,17 @@ function hintFor(ex){
 /* ---------- animated figure: a 3D jointed body (two-bone IK), drawn from a three-quarter view, looping between two poses ----------
    Pose numbers are in the side plane: x forward, y down (ground at 151). hz / fz = half-distance between hands / feet (sideways). */
 var FIGS={
- squat:{a:{hip:[96,77],t:4,foot:[100,145],hand:[96,38],hz:19,fz:12},b:{hip:[78,116],t:38,foot:[100,145],hand:[103,86],hz:19,fz:12},kOut:.45,eOut:.6,
+ squat:{a:{hip:[96,77],t:4,foot:[100,145],hand:[96,38],hz:19,fz:14},b:{hip:[78,116],t:38,foot:[100,145],hand:[103,86],hz:19,fz:14},kOut:.5,eOut:.6,toeOut:4,
   props:[["bar","sh",-5,1,12]],tm:[2.4,.3,1.2,.5],cap:["Spuštaj se 2–3 s","Ustani snažno"]},
  rdl:{a:{hip:[96,77],t:3,foot:[98,145],hand:[102,80],hz:13},b:{hip:[78,84],t:66,foot:[98,145],hand:[106,112],hz:13},
   props:[["bar","hand",0,0,12]],tm:[2.8,.4,1.2,.5],cap:["Kukovi unazad, 3 s","Kukovi naprijed"]},
- legpress:{a:{hip:[76,124],t:-40,foot:[126,82],toe:[-7,-9],hand:[84,130],hz:15,fz:9},b:{hip:[76,124],t:-40,foot:[104,99],toe:[-7,-9],hand:[84,130],hz:15,fz:9},kOut:.3,
+ legpress:{ik:"leg",a:{hip:[76,124],t:-40,foot:[126,82],toe:[-7,-9],hand:[84,130],hz:15,fz:9},b:{hip:[76,124],t:-40,foot:[104,99],toe:[-7,-9],hand:[84,130],hz:15,fz:9},kOut:.3,
   props:[["seg",38,92,72,134,7],["seg",72,134,94,130,7],["segj","foot",-9,-17,13,10,5]],tm:[2.4,.3,1.2,.4],cap:["Spuštaj 2–3 s","Guraj petama"]},
  legcurl:{a:{hip:[76,105],t:-8,foot:[143,110],toe:[10,-6],hand:[88,113],hz:15},b:{hip:[76,105],t:-8,foot:[104,138],toe:[11,4],hand:[88,113],hz:15},
   props:[["rect",64,110,50,7],["seg",66,110,59,62,6],["pad","foot",-1,6,4]],tm:[1.1,.6,2.4,.3],cap:["Privuci pete, zadrži","Vraćaj 2–3 s"]},
  calf:{a:{hip:[95,77.5],t:2,foot:[94,146],toe:[13,3],hand:[99,81],hz:14},b:{hip:[95,68.5],t:2,foot:[94,137],toe:[13,12],hand:[99,72],hz:14},
   props:[["rect",98,149,28,6,0,20],["db","hand","x"]],tm:[1,.8,2,.8],cap:["Na prste, zadrži","Spuštaj petu polako"]},
- plank:{a:{hip:[95,124],t:86,foot:[27,141],toe:[3,8],hand:[161,146],hz:9},b:{hip:[95,122.5],t:86,foot:[27,141],toe:[3,8],hand:[161,146],hz:9},eDir:-1,
+ plank:{a:{hip:[95,130],t:85.5,foot:[27,141],toe:[3,8],hand:[161,146],hz:10},b:{hip:[95,129],t:85.5,foot:[27,141],toe:[3,8],hand:[161,146],hz:10},eDir:-1,
   props:[],tm:[1.6,0,1.6,0],cap:["Drži liniju, diši","Drži liniju, diši"]},
  dbbench:{a:{hip:[122,108],t:-90,foot:[150,145],hand:[78,61],hz:12,fz:17},b:{hip:[122,108],t:-90,foot:[150,145],hand:[80,97],hz:23,fz:17},eDir:-1,eOut:3,
   props:[["rect",52,113,84,6,0,11],["seg",62,119,62,150,4],["seg",126,119,126,150,4],["db","hand","z"]],tm:[2.4,.3,1.1,.4],cap:["Spuštaj 2–3 s","Potisni gore"]},
@@ -723,25 +723,36 @@ var FIG=(function(){
 
   /* inner SVG markup for exercise spec `sp` at blend k (0 = pose a, 1 = pose b) */
   /* solved 3D joints for blend k: used by the SVG drawing and by the offline 3D renderer */
+  function unit(a){var l=len(a)||1;return [a[0]/l,a[1]/l,(a[2]||0)/l];}
+  function slerp(a,b,k){
+    var d=Math.max(-1,Math.min(1,dot3(a,b))),th=Math.acos(d);if(th<1e-4)return lerp(a,b,k);
+    var sn=Math.sin(th),x=Math.sin((1-k)*th)/sn,y=Math.sin(k*th)/sn;return [a[0]*x+b[0]*y,a[1]*x+b[1]*y,(a[2]||0)*x+(b[2]||0)*y];
+  }
+  /* one side of the body solved at a single key pose */
+  function side(sp,pose,L,s){
+    var far=s<0,t=pose.t*Math.PI/180,u=[Math.sin(t),-Math.cos(t),0],hip=[pose.hip[0],pose.hip[1],0],shm=add(hip,u,L.to);
+    function tgt(key,zk,zdef){var p=(far&&pose[key+"2"])||pose[key],z=(far&&pose[zk+"2"]!=null)?pose[zk+"2"]:(pose[zk]!=null?pose[zk]:zdef);return [p[0],p[1],(far?-1:1)*z];}
+    var sj=add(shm,[0,0,s*L.sw]),hj=add(hip,[0,0,s*L.hw]),hand=tgt("hand","hz",L.sw),foot=tgt("foot","fz",L.hw+1);
+    var eDir=(far&&sp.eDir2!=null)?sp.eDir2:(sp.eDir==null?1:sp.eDir),kDir=(far&&sp.kDir2!=null)?sp.kDir2:(sp.kDir==null?-1:sp.kDir);
+    var ep=bend2(sj,hand,L.ua,L.fa,eDir),kp=bend2(hj,foot,L.th,L.sh,kDir);ep[2]=s*(sp.eOut||0);kp[2]=s*(sp.kOut||0);
+    var arm=ik3(sj,hand,L.ua,L.fa,ep),leg=ik3(hj,foot,L.th,L.sh,kp);
+    return {sj:sj,hj:hj,el:arm.mid,hand:arm.end,kn:leg.mid,foot:leg.end,ep:ep,kp:kp,toe:(far&&pose.toe2)||pose.toe||[12,4]};
+  }
+  /* solved 3D joints for blend k: used by the SVG drawing and by the offline 3D renderer.
+     A hand or foot that stays put between the two poses is held there (IK); otherwise each bone turns from its start to its end direction,
+     so limbs swing on arcs around their joints instead of the hand travelling in a straight line. */
   function solve(sp,k){
     var L={},n;for(n in BASE)L[n]=(sp.len&&sp.len[n])||BASE[n];
     var A=sp.a,B=sp.b,hip2=lerp(A.hip,B.hip,k),t=(A.t+(B.t-A.t)*k)*Math.PI/180,u=[Math.sin(t),-Math.cos(t),0],fw=[Math.cos(t),Math.sin(t),0];
-    var hip=[hip2[0],hip2[1],0],shm=add(hip,u,L.to),S={};
-    function tgt(pose,key,far,zk,zdef){
-      var p=(far&&pose[key+"2"])||pose[key],z=(far&&pose[zk+"2"]!=null)?pose[zk+"2"]:(pose[zk]!=null?pose[zk]:zdef);
-      return [p[0],p[1],(far?-1:1)*z];
-    }
+    var hip=[hip2[0],hip2[1],0],shm=add(hip,u,L.to),S={},held=sp.ik||"";
     [1,-1].forEach(function(s){
-      var far=s<0,sj=add(shm,[0,0,s*L.sw]),hj=add(hip,[0,0,s*L.hw]);
-      var hA=tgt(A,"hand",far,"hz",L.sw),hB=tgt(B,"hand",far,"hz",L.sw),fA=tgt(A,"foot",far,"fz",L.hw+1),fB=tgt(B,"foot",far,"fz",L.hw+1);
-      var hand=lerp(hA,hB,k),foot=lerp(fA,fB,k),v;
-      if(sp.arcHand){v=sub(hand,sj);hand=add(sj,v,(len(sub(hA,sj))+(len(sub(hB,sj))-len(sub(hA,sj)))*k)/(len(v)||1));}
-      if(sp.arcFoot){v=sub(foot,hj);foot=add(hj,v,(len(sub(fA,hj))+(len(sub(fB,hj))-len(sub(fA,hj)))*k)/(len(v)||1));}
-      var toeA=(far&&A.toe2)||A.toe||[12,4],toeB=(far&&B.toe2)||B.toe||[12,4],toe=lerp(toeA,toeB,k);
-      var eDir=(far&&sp.eDir2!=null)?sp.eDir2:(sp.eDir==null?1:sp.eDir),kDir=(far&&sp.kDir2!=null)?sp.kDir2:(sp.kDir==null?-1:sp.kDir);
-      var ep=bend2(sj,hand,L.ua,L.fa,eDir),kp=bend2(hj,foot,L.th,L.sh,kDir);ep[2]=s*(sp.eOut||0);kp[2]=s*(sp.kOut||0);
-      var arm=ik3(sj,hand,L.ua,L.fa,ep),leg=ik3(hj,foot,L.th,L.sh,kp),toe3=add(leg.end,[toe[0],toe[1],s*1.5]);
-      S[s]={sj:sj,hj:hj,el:arm.mid,hand:arm.end,kn:leg.mid,foot:leg.end,toe:toe3};
+      var a=side(sp,A,L,s),b=side(sp,B,L,s),sj=add(shm,[0,0,s*L.sw]),hj=add(hip,[0,0,s*L.hw]),el,hand,kn,foot,r;
+      if(held.indexOf("arm")>=0||len(sub(a.hand,b.hand))<1.5){r=ik3(sj,lerp(a.hand,b.hand,k),L.ua,L.fa,lerp(a.ep,b.ep,k));el=r.mid;hand=r.end;}
+      else{el=add(sj,slerp(unit(sub(a.el,a.sj)),unit(sub(b.el,b.sj)),k),L.ua);hand=add(el,slerp(unit(sub(a.hand,a.el)),unit(sub(b.hand,b.el)),k),L.fa);}
+      if(held.indexOf("leg")>=0||len(sub(a.foot,b.foot))<1.5){r=ik3(hj,lerp(a.foot,b.foot,k),L.th,L.sh,lerp(a.kp,b.kp,k));kn=r.mid;foot=r.end;}
+      else{kn=add(hj,slerp(unit(sub(a.kn,a.hj)),unit(sub(b.kn,b.hj)),k),L.th);foot=add(kn,slerp(unit(sub(a.foot,a.kn)),unit(sub(b.foot,b.kn)),k),L.sh);}
+      var toe=lerp(a.toe,b.toe,k);
+      S[s]={sj:sj,hj:hj,el:el,hand:hand,kn:kn,foot:foot,toe:add(foot,[toe[0],toe[1],s*(1.5+(sp.toeOut||0))])};
     });
     return {L:L,t:t,u:u,fw:fw,hip:hip,shm:shm,S:S};
   }
