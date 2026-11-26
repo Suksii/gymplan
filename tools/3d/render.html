@@ -35,6 +35,7 @@ const MAT = {
   metal: new THREE.MeshStandardMaterial({ color: "#8C88A0", roughness: 0.35, metalness: 0.7 }),
   weight: new THREE.MeshStandardMaterial({ color: "#A81E5B", roughness: 0.55 }),
   hair: new THREE.MeshStandardMaterial({ color: "#3B2418", roughness: 0.85 }),
+  rope: new THREE.MeshStandardMaterial({ color: "#2E2A3A", roughness: 0.9 }),
 };
 const sub = (a, b) => [a[0] - b[0], a[1] - b[1], (a[2] || 0) - (b[2] || 0)];
 const mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, ((a[2] || 0) + (b[2] || 0)) / 2];
@@ -127,7 +128,7 @@ function curl(n, amount) {                             // close the fingers arou
 }
 
 // which way the palm faces, per exercise (s: +1 left, -1 right)
-const PALM = { rdl: "back", squat: "fwd", dbbench: "fwd", incline: "fwd", ohp: "fwd", latpd: "fwd", pullup: "fwd", curl: "sup", latraise: "lat", pushdown: "downback", facepull: "down", hipthrust: "down" };
+const PALM = { rdl: "back", squat: "fwd", dbbench: "fwd", incline: "fwd", ohp: "fwd", latpd: "fwd", curl: "sup", latraise: "lat", pushdown: "downback", facepull: "down", hipthrust: "down" };
 function palmDir(kind, s, j) {
   if (kind === "fwd") return new THREE.Vector3(0, 0, 1); if (kind === "back") return new THREE.Vector3(0, 0, -1); if (kind === "down") return new THREE.Vector3(0, -1, 0);
   if (kind === "downback") return new THREE.Vector3(0, -1, -0.5); if (kind === "lat") return new THREE.Vector3(-s * 0.5, -1, 0);
@@ -163,7 +164,7 @@ function pose(id, k) {
     if (bones[n + "ToeBase"]) aim(bones[n + "Foot"], bones[n + "ToeBase"], D(sub(j.toe, j.foot)));
     const planted = Math.hypot(...sub(A.S[s].hand, B.S[s].hand)) < 1.5, pole = D(sub(j.el, mid(j.sj, j.hand)));
     if (floorHands) { const t = V(j.hand); t.y = 0.03; armIK(n, t, id === "plank" ? new THREE.Vector3(0, -1, -0.25) : new THREE.Vector3(s * 0.45, 0.25, -1)); }   // plank rests on the forearms, push-up on the palms
-    else if (planted && id !== "pullup") armIK(n, V(j.hand), pole);
+    else if (planted) armIK(n, V(j.hand), pole);
     else { aim(bones[n + "Arm"], bones[n + "ForeArm"], D(sub(j.el, j.sj))); aim(bones[n + "ForeArm"], bones[n + "Hand"], D(sub(j.hand, j.el))); }
   }
   const rb = (sp.props || []).find((p) => p[0] === "bar" && p[1] !== "hand");                       // bar resting on the body: hands reach for it
@@ -190,15 +191,22 @@ function ensure(id) {                                   // fixed equipment is bu
     fixed[id] = { g, M0, M1, extra: (STATIC[id] && STATIC[id](kit(g), M0, M1)) || {} }; }
   return fixed[id];
 }
+const ROPE = { facepull: 0.2, latv: 0.13 };                          // rope attachment: distance from the hands to the knot, metres
 function props(id, sp, M, st) {
   for (const m of [...gear.children]) { m.geometry.dispose(); gear.remove(m); }
   const G = {}; for (const n of ["Left", "Right"]) G[n] = grip(n).addScaledVector(palmN(n), 0.03);
   const gl = G.Left, gr = G.Right, gm = gl.clone().add(gr).multiplyScalar(0.5);
   if (DYNAMIC[id]) DYNAMIC[id](kit(gear), M, st.M0, st.M1, st.extra);
-  if (CABLE[id]) cyl(st.extra.pulley, gm, 0.006, GM.steel, 8);
+  // a rope bends where the cable holds it: the two ends run from a knot in front of the hands
+  const knot = ROPE[id] ? gm.clone().add(st.extra.pulley.clone().sub(gm).normalize().multiplyScalar(ROPE[id])) : null;
+  if (CABLE[id]) cyl(st.extra.pulley, knot || gm, 0.006, GM.steel, 8);
   for (const p of sp.props || []) {
     const t = p[0];
-    if (t === "handle" && id !== "pullup") { const e = (p[2] || 0) * S + 0.05; cyl(gl.clone().add(new THREE.Vector3(e, 0, 0)), gr.clone().add(new THREE.Vector3(-e, 0, 0)), 0.014, GM.steel); }
+    if (t === "handle" && knot && id === "latv") {             // V-bar: two parallel grips joined in a triangle under the cable
+      for (const n of ["Left", "Right"]) { const g = G[n], ax = thumbN(n); cyl(g.clone().addScaledVector(ax, 0.07), g.clone().addScaledVector(ax, -0.07), 0.016, MAT.rope, 12);
+        cyl(knot, g.clone().addScaledVector(ax, 0.07), 0.01, GM.steel, 10); cyl(knot, g.clone().addScaledVector(ax, -0.07), 0.01, GM.steel, 10); } }
+    else if (t === "handle" && knot) { for (const g of [gl, gr]) cyl(knot, g, 0.012, MAT.rope, 10); }
+    else if (t === "handle") { const e = (p[2] || 0) * S + 0.05; cyl(gl.clone().add(new THREE.Vector3(e, 0, 0)), gr.clone().add(new THREE.Vector3(-e, 0, 0)), 0.014, GM.steel); }
     else if (t === "bar") { const c = p[1] === "hand" ? gm.clone() : barCentre(p);
       cyl(c.clone().setX(-0.8), c.clone().setX(0.8), 0.014, GM.steel);
       for (const sx of [1, -1]) { cyl(c.clone().setX(sx * 0.56), c.clone().setX(sx * 0.6), 0.2, MAT.weight, 40); cyl(c.clone().setX(sx * 0.61), c.clone().setX(sx * 0.65), 0.2, MAT.weight, 40); cyl(c.clone().setX(sx * 0.65), c.clone().setX(sx * 0.69), 0.03, GM.steel); } }
@@ -209,7 +217,7 @@ function props(id, sp, M, st) {
   }
 }
 // camera: three-quarter front view by default; from the side or from behind where the machine would hide the movement
-const AZ = { legpress: 1.45, cablerow: 1.35, plank: 1.25, pushup: 1.25, hyper: 1.25, legraise: 1.15, hipthrust: 1.05, legcurl: 1.15, legext: 1.15, dbrow: 0.95, pullup: 2.4, latpd: 2.35, pushdown: 1.05, facepull: 1.1, abd: 0.35, squat: 0.75 };
+const AZ = { legpress: 1.45, cablerow: 1.35, plank: 1.25, pushup: 1.25, hyper: 1.25, legraise: 1.15, hipthrust: 1.05, legcurl: 1.15, legext: 1.15, dbrow: 0.95, latpd: 2.35, latv: 2.0, hammer: 1.2, ohtri: 2.3, pushdown: 1.05, facepull: 1.1, abd: 0.35, squat: 0.75 };
 function frame(id, st) {
   LIFTY = LIFT[id] || 0;
   const sp = FIGS[id], box = new THREE.Box3();

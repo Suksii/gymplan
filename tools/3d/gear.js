@@ -83,6 +83,7 @@ export const STATIC = {
     const rc = v(0, hip.y + 0.15, kn.z - 0.16); k.roller(rc, 0.5, 0.05); k.tube(rc, v(0, rc.y, zc), 0.024);                                            // thigh pads
     k.box(0, H / 2, zc, 0.1, H, 0.12); k.box(0, H, (zc + gz) / 2, 0.08, 0.08, zc - gz + 0.24); k.disc(v(0, H - 0.09, gz), 0.05, 0.03, GM.steel);
     k.stack(0, zc - 0.17); k.box(0, 0.025, zc, 0.7, 0.05, 0.1); k.box(0, 0.025, (hip.z + zc) / 2, 0.05, 0.05, zc - hip.z); return { pulley: v(0, H - 0.13, gz) }; },
+  latv(k, M0) { return STATIC.latpd(k, M0); },
   cablerow(k, M0) { const { hip, foot } = M0, top = hip.y - SEAT, z0 = hip.z - 0.24, zc = foot.z + 0.55;
     k.bench(z0, hip.z + 0.3, top, 0, 0.3);
     for (const n of ["L", "R"]) { const ft = M0["foot" + n], t = M0["toe" + n].clone().sub(ft).normalize(); let ns = perp(t); if (ns.z < 0) ns.negate();                 // foot plates behind the soles
@@ -97,9 +98,6 @@ export const STATIC = {
     const rc = foot.clone().addScaledVector(n, -0.09).addScaledVector(L, -0.03); k.roller(rc, 0.44, 0.04); for (const sx of [1, -1]) k.tube(v(sx * 0.21, rc.y, rc.z), v(sx * 0.21, fp.y, fp.z).addScaledVector(n, -0.12), 0.016);
     const a = p0.clone().lerp(p1, 0.5).addScaledVector(n, 0.07), c = fp.clone().addScaledVector(n, 0.2); k.tube(a, c, 0.03); k.tube(a, v(0, 0.03, a.z), 0.03); k.tube(c, v(0, 0.03, c.z), 0.03);
     k.box(0, 0.03, (a.z + c.z) / 2, 0.08, 0.06, Math.abs(a.z - c.z) + 0.3); k.box(0, 0.03, a.z + 0.1, 0.6, 0.06, 0.08); k.box(0, 0.03, c.z - 0.1, 0.6, 0.06, 0.08); },
-  pullup(k, M0, M1) { const gz = M0.grip.z, gy = M0.grip.y, zs = gz - 0.62;
-    for (const sx of [1, -1]) { k.box(sx * 0.5, (gy + 0.12) / 2, gz, 0.07, gy + 0.12, 0.07); k.box(sx * 0.5, 0.03, gz - 0.25, 0.09, 0.06, 1.0); k.tube(v(sx * 0.5, gy + 0.1, gz), v(sx * 0.12, 1.75, zs), 0.026); }
-    k.tube(v(-0.5, gy, gz), v(0.5, gy, gz), 0.017, GM.steel); k.stack(0, zs, 1.8); return { pivot: v(0, 0.5, zs + 0.1) }; },
   dbbench(k, M0) { k.bench(M0.sh.z - 0.34, M0.hip.z + 0.08, Math.min(M0.hip.y, M0.sh.y) - BT); },
   incline(k, M0) { const { hip, uT, b } = M0, a = hip.clone().addScaledVector(b, BT).addScaledVector(uT, -0.02); k.board(a, a.clone().addScaledVector(uT, 0.8), 0.3);
     const top = hip.y - SEAT; k.box(0, top - 0.04, hip.z + 0.1, 0.3, 0.08, 0.34, GM.pad, 0.03); k.box(0, (top - 0.08) / 2, hip.z + 0.12, 0.07, top - 0.08, 0.07);
@@ -126,8 +124,6 @@ export const DYNAMIC = {
     k.roller(c, 0.42, 0.05); k.tube(v(-0.25, c.y, c.z), v(0.25, c.y, c.z), 0.014, GM.steel); for (const sx of [1, -1]) k.tube(v(sx * 0.25, M.kn.y, M.kn.z), v(sx * 0.25, c.y, c.z), 0.02); },
   abd(k, M) { for (const [n, sx] of [["L", 1], ["R", -1]]) { const kn = M["knee" + n], c = v(kn.x + sx * 0.125, kn.y + 0.01, kn.z - 0.05); k.box(c.x, c.y, c.z, 0.05, 0.2, 0.24, GM.pad, 0.02);
       k.tube(v(c.x + sx * 0.03, c.y - 0.05, c.z), v(sx * 0.2, M.hip.y - SEAT - 0.12, M.hip.z + 0.05), 0.02); } },
-  pullup(k, M, M0, M1, S) { const c = M.kn.clone(); c.y -= 0.09; c.z -= 0.02; k.box(0, c.y, c.z, 0.46, 0.05, 0.27, GM.pad, 0.02);
-    for (const sx of [1, -1]) k.tube(v(sx * 0.3, c.y - 0.03, c.z), v(sx * 0.3, S.pivot.y, S.pivot.z), 0.02); k.tube(v(-0.3, c.y - 0.03, c.z), v(0.3, c.y - 0.03, c.z), 0.02); },
 };
 // exercises whose handle hangs on a cable from a pulley returned by the static builder
-export const CABLE = { latpd: 1, cablerow: 1, pushdown: 1, facepull: 1 };
+export const CABLE = { latpd: 1, latv: 1, cablerow: 1, pushdown: 1, facepull: 1 };
